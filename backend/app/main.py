@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
 
+from app.api.analyze import router as analyze_router
+
 # Load environment variables
 load_dotenv()
 
@@ -12,15 +14,20 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# Register API routes
+app.include_router(analyze_router)
+
+
 @app.get("/")
 def read_root():
     return {
         "project": "AI Firewall",
-        "version": "0.0.0"
+        "version": "0.0.0",
     }
+
 
 @app.get("/health")
 def read_health():
     return {
-        "status": "healthy"
+        "status": "healthy",
     }
