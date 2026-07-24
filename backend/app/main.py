@@ -1,7 +1,6 @@
-from fastapi import FastAPI
-from dotenv import load_dotenv
-
 from app.api.analyze import router as analyze_router
+from dotenv import load_dotenv
+from fastapi import FastAPI
 
 # Load environment variables
 load_dotenv()
