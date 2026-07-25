@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
 
+# pyrefly: ignore [missing-import]
 from app.api.analyze import router as analyze_router
 
 # Load environment variables
