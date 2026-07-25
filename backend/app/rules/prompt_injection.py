@@ -1,6 +1,3 @@
-from typing import Optional
-
-
 PROMPT_INJECTION_PATTERNS = [
     "ignore previous instructions",
     "ignore all previous instructions",
@@ -15,7 +12,7 @@ PROMPT_INJECTION_PATTERNS = [
 ]
 
 
-def check_prompt_injection(text: str) -> Optional[dict]:
+def check_prompt_injection(text: str) -> dict | None:
     """
     Detect simple prompt injection attempts using keyword matching.
     Returns a finding dictionary if a threat is detected, otherwise None.
@@ -23,7 +20,7 @@ def check_prompt_injection(text: str) -> Optional[dict]:
 
     normalized_text = text.lower().strip()
 
-    for pattern in PROMPT_INJECTION_PATTERNS:
+    for pattern in sorted(PROMPT_INJECTION_PATTERNS, key=len, reverse=True):
         if pattern in normalized_text:
             return {
                 "safe": False,
