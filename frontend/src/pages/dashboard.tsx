@@ -1,36 +1,43 @@
+import Header from "../components/layout/Header";
+import Sidebar from "../components/layout/Sidebar";
+import StatCard from "../components/dashboard/StatCard";
+
 function Dashboard() {
   return (
-    <div className="dashboard">
-      <header className="dashboard-header">
-        <h1>🛡️ AI Firewall</h1>
-        <p>Real-Time Intelligent Network Protection</p>
-      </header>
+    <div className="dashboard-layout">
+      <Sidebar />
 
-      <section className="dashboard-content">
-        <h2>Dashboard</h2>
+      <main className="dashboard-main">
+        <Header />
 
-        <div className="dashboard-cards">
-          <div className="card">
-            <h3>Active Processes</h3>
-            <p>0</p>
+        <section className="dashboard-content">
+          <h2>Dashboard Overview</h2>
+
+          <div className="dashboard-grid">
+            <StatCard
+              title="Active Processes"
+              value={0}
+            />
+
+            <StatCard
+              title="Network Connections"
+              value={0}
+            />
+
+            <StatCard
+              title="Threat Alerts"
+              value={0}
+              color="#ef4444"
+            />
+
+            <StatCard
+              title="Firewall Status"
+              value="Protected"
+              color="#22c55e"
+            />
           </div>
-
-          <div className="card">
-            <h3>Network Connections</h3>
-            <p>0</p>
-          </div>
-
-          <div className="card">
-            <h3>Threat Alerts</h3>
-            <p>0</p>
-          </div>
-
-          <div className="card">
-            <h3>Firewall Status</h3>
-            <p>Protected ✅</p>
-          </div>
-        </div>
-      </section>
+        </section>
+      </main>
     </div>
   );
 }
