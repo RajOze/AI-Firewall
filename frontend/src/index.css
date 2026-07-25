@@ -1,0 +1,66 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.dashboard {
+  padding: 2rem;
+}
+
+.dashboard-header {
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+  font-size: 2.2rem;
+}
+
+.dashboard-header p {
+  color: #94a3b8;
+  margin-top: 0.5rem;
+}
+
+.dashboard-content h2 {
+  margin-bottom: 1rem;
+}
+
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.card h3 {
+  color: #cbd5e1;
+  margin-bottom: 0.75rem;
+}
+
+.card p {
+  font-size: 1.8rem;
+  font-weight: bold;
+}
