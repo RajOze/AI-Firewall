@@ -1,4 +1,4 @@
-﻿"""Safety validation for firewall rule operations."""
+"""Safety validation for firewall rule operations."""
 
 from __future__ import annotations
 
@@ -9,10 +9,18 @@ from app.firewall.models import FirewallRule
 
 MAX_RULE_NAME_LENGTH = 128
 MAX_DESCRIPTION_LENGTH = 512
+REQUIRED_RULE_PREFIX = "AI-Firewall-"
+FORBIDDEN_WILDCARD_CHARS = ("*", "?", "[", "]")
 
 
 class FirewallValidationError(ValueError):
     """Raised when a firewall rule fails safety validation."""
+
+
+class UnsafeRuleNamespaceError(FirewallValidationError):
+    """Raised when an operation targets a rule outside the AI-Firewall-* namespace."""
+
+
 
 
 def validate_firewall_rule(rule: FirewallRule) -> FirewallRule:
@@ -117,6 +125,28 @@ def validate_firewall_rule_name(name: str) -> str:
     if len(name) > MAX_RULE_NAME_LENGTH:
         raise FirewallValidationError(
             f"Firewall rule name exceeds {MAX_RULE_NAME_LENGTH} characters."
+        )
+
+    return name
+
+
+def validate_firewall_rule_namespace(name: str) -> str:
+    """
+    Validate that a rule name belongs to the AI-Firewall-* namespace and contains no wildcards.
+    """
+    if not isinstance(name, str):
+        raise FirewallValidationError("Firewall rule name must be a string.")
+
+    name = name.strip()
+
+    if not name.startswith(REQUIRED_RULE_PREFIX):
+        raise UnsafeRuleNamespaceError(
+            f"Rule name '{name}' must start with required prefix '{REQUIRED_RULE_PREFIX}'."
+        )
+
+    if any(char in name for char in FORBIDDEN_WILDCARD_CHARS):
+        raise UnsafeRuleNamespaceError(
+            f"Rule name '{name}' cannot contain wildcard characters."
         )
 
     return name

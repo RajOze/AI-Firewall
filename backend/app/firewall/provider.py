@@ -1,4 +1,4 @@
-﻿from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod
 
 from app.firewall.models import FirewallRule
 
@@ -21,4 +21,8 @@ class FirewallProvider(ABC):
 
     @abstractmethod
     def rule_exists(self, name: str) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_administrator(self) -> bool:
         raise NotImplementedError
