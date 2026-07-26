@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 # pyrefly: ignore [missing-import]
@@ -14,6 +15,20 @@ app = FastAPI(
     version="0.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+)
+
+# Configure explicit CORS origins for development frontend
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 # Register API routes
