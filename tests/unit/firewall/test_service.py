@@ -645,3 +645,202 @@ def test_phase87_post_mutation_verification_failure_raises_creation_error() -> N
         service.add_rule(rule)
 
     assert len(provider.added_rules) == 1
+
+
+# =====================================================================
+# PHASE 8.8 — TRANSACTION INTEGRITY & FAILURE-STATE HARDENING TESTS
+# =====================================================================
+
+def test_phase88_add_collision_zero_mutation_calls() -> None:
+    """Pre-mutation collision detection must prevent provider add_rule call entirely."""
+    provider = FakeFirewallProvider()
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-CollisionTarget",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    # First addition succeeds
+    service.add_rule(rule)
+    assert len(provider.added_rules) == 1
+
+    # Second addition collides -> 0 further add_rule calls
+    with pytest.raises(FirewallCollisionError, match="already exists"):
+        service.add_rule(rule)
+
+    assert len(provider.added_rules) == 1
+
+
+def test_phase88_add_prestate_query_error_zero_mutation_calls() -> None:
+    """If pre-mutation rule_exists query raises an error, zero provider add_rule calls occur."""
+    from app.firewall.windows_provider import WindowsFirewallProviderError
+
+    class QueryFailingProvider(FakeFirewallProvider):
+        def rule_exists(self, identity_or_name: FirewallRuleIdentity | str) -> bool:
+            raise WindowsFirewallProviderError("Pre-mutation state query failed")
+
+    provider = QueryFailingProvider()
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-PrestateQueryFail",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    with pytest.raises(WindowsFirewallProviderError, match="Pre-mutation state query failed"):
+        service.add_rule(rule)
+
+    assert len(provider.added_rules) == 0
+
+
+def test_phase88_add_execution_failure_single_mutation_call() -> None:
+    """OS execution error during add_rule produces exactly one attempted mutation call and zero retries."""
+    from app.firewall.windows_provider import WindowsFirewallProviderError
+
+    class ExecutionFailingProvider(FakeFirewallProvider):
+        def __init__(self) -> None:
+            super().__init__()
+            self.call_count = 0
+
+        def add_rule(self, rule: FirewallRule) -> FirewallRuleIdentity:
+            self.call_count += 1
+            raise WindowsFirewallProviderError("New-NetFirewallRule failed")
+
+    provider = ExecutionFailingProvider()
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-ExecutionFail",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    with pytest.raises(WindowsFirewallProviderError, match="New-NetFirewallRule failed"):
+        service.add_rule(rule)
+
+    assert provider.call_count == 1
+
+
+def test_phase88_add_verification_failure_single_mutation_call_no_retry() -> None:
+    """Verification failure after add_rule results in exactly one mutation call and no double mutation."""
+    provider = FakeFirewallProvider()
+    provider.auto_update_existence = False
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-VerificationFailNoRetry",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    with pytest.raises(FirewallCreationVerificationError):
+        service.add_rule(rule)
+
+    assert len(provider.added_rules) == 1
+
+
+def test_phase88_remove_nonexistent_zero_mutation_calls() -> None:
+    """Removing a nonexistent rule must raise FirewallRuleNotFoundError and execute zero provider remove_rule calls."""
+    provider = FakeFirewallProvider()
+    service = FirewallService(provider=provider)
+
+    with pytest.raises(FirewallRuleNotFoundError, match="does not exist"):
+        service.remove_rule("AI-Firewall-NonExistent")
+
+    assert len(provider.removed_names) == 0
+
+
+def test_phase88_remove_prestate_query_error_zero_mutation_calls() -> None:
+    """If pre-removal rule_exists query raises an error, zero provider remove_rule calls occur."""
+    from app.firewall.windows_provider import WindowsFirewallProviderError
+
+    class QueryFailingProvider(FakeFirewallProvider):
+        def rule_exists(self, identity_or_name: FirewallRuleIdentity | str) -> bool:
+            raise WindowsFirewallProviderError("Pre-removal state query failed")
+
+    provider = QueryFailingProvider()
+    service = FirewallService(provider=provider)
+
+    with pytest.raises(WindowsFirewallProviderError, match="Pre-removal state query failed"):
+        service.remove_rule("AI-Firewall-Target")
+
+    assert len(provider.removed_names) == 0
+
+
+def test_phase88_remove_execution_failure_single_mutation_call() -> None:
+    """OS execution error during remove_rule produces exactly one attempted removal call and zero retries."""
+    from app.firewall.windows_provider import WindowsFirewallProviderError
+
+    class RemoveFailingProvider(FakeFirewallProvider):
+        def __init__(self) -> None:
+            super().__init__()
+            self.remove_call_count = 0
+            self.existence_checks["AI-Firewall-TargetRule"] = True
+
+        def remove_rule(self, identity_or_name: FirewallRuleIdentity | str) -> None:
+            self.remove_call_count += 1
+            raise WindowsFirewallProviderError("Remove-NetFirewallRule failed")
+
+    provider = RemoveFailingProvider()
+    service = FirewallService(provider=provider)
+
+    with pytest.raises(WindowsFirewallProviderError, match="Remove-NetFirewallRule failed"):
+        service.remove_rule("AI-Firewall-TargetRule")
+
+    assert provider.remove_call_count == 1
+
+
+def test_phase88_remove_verification_failure_single_mutation_call_no_retry() -> None:
+    """Post-removal verification failure produces exactly one removal call and zero retries or compensating calls."""
+    class PersistentProvider(FakeFirewallProvider):
+        def __init__(self) -> None:
+            super().__init__()
+            self.existence_checks["AI-Firewall-Persistent"] = True
+
+        def remove_rule(self, identity_or_name: FirewallRuleIdentity | str) -> None:
+            # Record removal call but rule remains present in existence_checks
+            key = identity_or_name.name if isinstance(identity_or_name, FirewallRuleIdentity) else identity_or_name
+            self.removed_names.append(key)
+
+    provider = PersistentProvider()
+    service = FirewallService(provider=provider)
+
+    with pytest.raises(FirewallRemovalVerificationError, match="still exists after removal"):
+        service.remove_rule("AI-Firewall-Persistent")
+
+    assert len(provider.removed_names) == 1
+
+
+def test_phase88_identity_preserved_across_transaction() -> None:
+    """Trusted FirewallRuleIdentity is identical across precheck, execution, and post-verification."""
+    provider = FakeFirewallProvider()
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-PreservedIdentity",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    identity = service.add_rule(rule)
+
+    # Precheck queried display_name
+    assert provider.existence_check_calls[0] == "AI-Firewall-PreservedIdentity"
+    # Execution returned identity
+    assert identity.name == "AI-Firewall-id-AI-Firewall-PreservedIdentity"
+    # Post-verification queried primary key identity.name
+    assert provider.existence_check_calls[1] == identity.name
+
+    # Clean removal
+    service.remove_rule(identity)
+
+    # Removal target was identity.name
+    assert provider.removed_names == [identity.name]
