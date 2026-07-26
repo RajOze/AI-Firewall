@@ -7,7 +7,15 @@ function Header() {
       </div>
 
       <div className="header-actions">
-        <button>Settings</button>
+        <span className="status">🟢 Protected</span>
+
+        <button>🔔 Alerts</button>
+
+        <button>⚙ Settings</button>
+
+        <div className="profile">
+          👤 Admin
+        </div>
       </div>
     </header>
   );

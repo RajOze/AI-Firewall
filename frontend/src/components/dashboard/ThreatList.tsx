@@ -1,38 +1,56 @@
 function ThreatList() {
   const threats = [
     {
+      id: 1,
       name: "Trojan.Win32",
       severity: "High",
-      status: "Blocked",
+      time: "2 min ago",
     },
     {
+      id: 2,
       name: "Suspicious PowerShell",
       severity: "Medium",
-      status: "Monitoring",
+      time: "8 min ago",
     },
     {
-      name: "Unknown Connection",
-      severity: "Low",
-      status: "Investigating",
+      id: 3,
+      name: "Chrome.exe",
+      severity: "Safe",
+      time: "12 min ago",
     },
   ];
 
+  const getColor = (severity: string) => {
+    switch (severity) {
+      case "High":
+        return "#ef4444";
+      case "Medium":
+        return "#f59e0b";
+      default:
+        return "#22c55e";
+    }
+  };
+
   return (
     <div className="panel">
-      <h2>Recent Threats</h2>
+      <h3>Recent Threats</h3>
 
-      <ul className="threat-list">
-        {threats.map((threat, index) => (
-          <li key={index}>
-            <div>
-              <strong>{threat.name}</strong>
-              <p>{threat.severity} Risk</p>
-            </div>
+      {threats.map((threat) => (
+        <div key={threat.id} className="threat-item">
+          <div>
+            <strong>{threat.name}</strong>
 
-            <span>{threat.status}</span>
-          </li>
-        ))}
-      </ul>
+            <p>{threat.time}</p>
+          </div>
+
+          <span
+            className="severity-badge"
+            style={{ background: getColor(threat.severity) }}
+          >
+            {threat.severity}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
