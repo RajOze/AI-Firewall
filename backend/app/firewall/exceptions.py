@@ -27,3 +27,7 @@ class FirewallRemovalVerificationError(FirewallMutationError):
 
 class FirewallCleanupError(FirewallMutationError):
     """Raised when cleanup removal fails during lifecycle teardown."""
+
+
+class FirewallAmbiguousIdentityError(FirewallMutationError):
+    """Raised when multiple rules match or identity is ambiguous."""

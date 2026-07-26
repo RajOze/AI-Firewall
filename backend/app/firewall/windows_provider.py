@@ -3,12 +3,14 @@
 import json
 import subprocess
 import sys
+import uuid
 
 from app.firewall.models import (
     FirewallAction,
     FirewallDirection,
     FirewallProfileState,
     FirewallRule,
+    FirewallRuleIdentity,
     WindowsCapabilityResult,
 )
 from app.firewall.provider import FirewallProvider
@@ -78,11 +80,14 @@ class WindowsFirewallProvider(FirewallProvider):
                 f"Failed to execute PowerShell command: {e}"
             ) from e
 
-    def add_rule(self, rule: FirewallRule) -> None:
+    def add_rule(self, rule: FirewallRule) -> FirewallRuleIdentity:
         """Add a firewall rule using New-NetFirewallRule.
 
         Args:
             rule: Validated FirewallRule instance
+
+        Returns:
+            FirewallRuleIdentity containing primary key Name and DisplayName
 
         Raises:
             ValueError: If action or direction enum is invalid
@@ -96,9 +101,13 @@ class WindowsFirewallProvider(FirewallProvider):
             raise ValueError(f"Unsupported firewall direction: {rule.direction}")
         direction_str = DIRECTION_MAP[rule.direction]
 
+        # Generate a unique 1:1 primary key Name
+        unique_name = f"AI-Firewall-{uuid.uuid4().hex[:16]}"
+
         # Fixed PowerShell script with parameter block
         script = """
         param(
+            [string]$Name,
             [string]$DisplayName,
             [string]$Action,
             [string]$Direction,
@@ -108,6 +117,7 @@ class WindowsFirewallProvider(FirewallProvider):
         )
 
         $params = @{
+            Name = $Name
             DisplayName = $DisplayName
             Action = $Action
             Direction = $Direction
@@ -120,12 +130,13 @@ class WindowsFirewallProvider(FirewallProvider):
         New-NetFirewallRule @params
         """
 
-        # Prepare arguments (empty strings for None values)
         remote_address = rule.remote_address if rule.remote_address is not None else ""
         program = rule.program if rule.program is not None else ""
         description = rule.description if rule.description is not None else ""
 
         arguments = [
+            "-Name",
+            unique_name,
             "-DisplayName",
             rule.name,
             "-Action",
@@ -148,39 +159,46 @@ class WindowsFirewallProvider(FirewallProvider):
                 f"Failed to add firewall rule '{rule.name}'{error_details}"
             )
 
-    def remove_rule(self, name: str) -> None:
+        return FirewallRuleIdentity(name=unique_name, display_name=rule.name)
+
+    def remove_rule(self, identity_or_name: FirewallRuleIdentity | str) -> None:
         """Remove a firewall rule using Remove-NetFirewallRule.
 
         Args:
-            name: Display name of the rule to remove
+            identity_or_name: FirewallRuleIdentity or DisplayName string to remove
 
         Raises:
             WindowsFirewallProviderError: If PowerShell command fails
         """
-        # Fixed PowerShell script with parameter block
-        script = """
-        param(
-            [string]$DisplayName
+        name_key = (
+            identity_or_name.name
+            if isinstance(identity_or_name, FirewallRuleIdentity)
+            else identity_or_name
         )
 
-        Remove-NetFirewallRule -DisplayName $DisplayName
+        script = """
+        param(
+            [string]$Name
+        )
+
+        Remove-NetFirewallRule -Name $Name
         """
 
-        arguments = ["-DisplayName", name]
+        arguments = ["-Name", name_key]
 
         result = self._run_powershell(script, *arguments)
         if result.returncode != 0:
             stderr = result.stderr.strip()
             error_details = f": {stderr}" if stderr else ""
             raise WindowsFirewallProviderError(
-                f"Failed to remove firewall rule '{name}'{error_details}"
+                f"Failed to remove firewall rule '{name_key}'{error_details}"
             )
 
-    def rule_exists(self, name: str) -> bool:
+    def rule_exists(self, identity_or_name: FirewallRuleIdentity | str) -> bool:
         """Check if a firewall rule exists using Get-NetFirewallRule.
 
         Args:
-            name: Display name of the rule to check
+            identity_or_name: FirewallRuleIdentity or DisplayName/Name string
 
         Returns:
             True if rule exists, False if not found
@@ -188,14 +206,19 @@ class WindowsFirewallProvider(FirewallProvider):
         Raises:
             WindowsFirewallProviderError: If PowerShell command fails unexpectedly
         """
-        # Fixed PowerShell script that exits with specific codes
+        name_key = (
+            identity_or_name.name
+            if isinstance(identity_or_name, FirewallRuleIdentity)
+            else identity_or_name
+        )
+
         script = """
         param(
-            [string]$DisplayName
+            [string]$Name
         )
 
         try {
-            $rule = Get-NetFirewallRule -DisplayName $DisplayName -ErrorAction Stop
+            $rule = Get-NetFirewallRule -Name $Name -ErrorAction Stop
             if ($rule) {
                 exit 0
             } else {
@@ -219,7 +242,7 @@ class WindowsFirewallProvider(FirewallProvider):
         }
         """
 
-        arguments = ["-DisplayName", name]
+        arguments = ["-Name", name_key]
         result = self._run_powershell(script, *arguments)
 
         if result.returncode == 0:
@@ -230,13 +253,13 @@ class WindowsFirewallProvider(FirewallProvider):
             stderr = result.stderr.strip()
             error_details = f": {stderr}" if stderr else ""
             raise WindowsFirewallProviderError(
-                f"Failed to check existence of firewall rule '{name}'{error_details}"
+                f"Failed to check existence of firewall rule '{name_key}'{error_details}"
             )
         else:
             stderr = result.stderr.strip()
             error_details = f": {stderr}" if stderr else ""
             raise WindowsFirewallProviderError(
-                f"Unexpected exit code {result.returncode} checking firewall rule '{name}'{error_details}"
+                f"Unexpected exit code {result.returncode} checking firewall rule '{name_key}'{error_details}"
             )
 
     def is_administrator(self) -> bool:

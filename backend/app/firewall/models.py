@@ -27,6 +27,18 @@ class FirewallRule:
 
 
 @dataclass(frozen=True)
+class FirewallRuleIdentity:
+    """
+    Immutable 1:1 unique identity for a host firewall rule.
+    'name' is the unique primary key identifier (-Name).
+    'display_name' is the user-facing display label (-DisplayName).
+    """
+
+    name: str
+    display_name: str
+
+
+@dataclass(frozen=True)
 class FirewallProfileState:
     """
     Representation of a Windows Firewall profile status.

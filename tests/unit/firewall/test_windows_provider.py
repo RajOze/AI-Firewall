@@ -36,7 +36,7 @@ def test_add_rule_allow_inbound_maps_enums_and_passes_arguments() -> None:
         "_run_powershell",
         return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
     ) as mock_run:
-        provider.add_rule(rule)
+        identity = provider.add_rule(rule)
 
         mock_run.assert_called_once()
         script, *args = mock_run.call_args[0]
@@ -48,8 +48,14 @@ def test_add_rule_allow_inbound_maps_enums_and_passes_arguments() -> None:
         assert r"C:\App\service.exe" not in script
         assert "Allow inbound traffic" not in script
 
+        # Return value checks
+        assert identity.display_name == "AllowInboundRule"
+        assert identity.name.startswith("AI-Firewall-")
+
         # Argument vector checks
-        assert args == [
+        assert args[0] == "-Name"
+        assert args[1] == identity.name
+        assert args[2:] == [
             "-DisplayName",
             "AllowInboundRule",
             "-Action",
@@ -159,7 +165,7 @@ def test_remove_rule_passes_name_separately_and_contains_cmdlet() -> None:
 
         assert "Remove-NetFirewallRule" in script
         assert "RuleToRemove" not in script
-        assert args == ["-DisplayName", "RuleToRemove"]
+        assert args == ["-Name", "RuleToRemove"]
 
 
 def test_remove_rule_raises_provider_error_on_nonzero_exit() -> None:
@@ -197,7 +203,7 @@ def test_rule_exists_returncode_0_returns_true() -> None:
         assert "try" in script
         assert "catch" in script
         assert "CheckRule" not in script
-        assert args == ["-DisplayName", "CheckRule"]
+        assert args == ["-Name", "CheckRule"]
 
 
 def test_rule_exists_returncode_1_returns_false() -> None:

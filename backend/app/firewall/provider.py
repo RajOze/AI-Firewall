@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from app.firewall.models import FirewallRule
+from app.firewall.models import FirewallRule, FirewallRuleIdentity
 
 
 class FirewallProvider(ABC):
@@ -12,15 +12,15 @@ class FirewallProvider(ABC):
     """
 
     @abstractmethod
-    def add_rule(self, rule: FirewallRule) -> None:
+    def add_rule(self, rule: FirewallRule) -> FirewallRuleIdentity:
         raise NotImplementedError
 
     @abstractmethod
-    def remove_rule(self, name: str) -> None:
+    def remove_rule(self, identity_or_name: FirewallRuleIdentity | str) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def rule_exists(self, name: str) -> bool:
+    def rule_exists(self, identity_or_name: FirewallRuleIdentity | str) -> bool:
         raise NotImplementedError
 
     @abstractmethod

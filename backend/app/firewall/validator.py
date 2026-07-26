@@ -144,6 +144,11 @@ def validate_firewall_rule_namespace(name: str) -> str:
             f"Rule name '{name}' must start with required prefix '{REQUIRED_RULE_PREFIX}'."
         )
 
+    if len(name) <= len(REQUIRED_RULE_PREFIX):
+        raise UnsafeRuleNamespaceError(
+            f"Rule name '{name}' must include a unique identifier suffix after prefix '{REQUIRED_RULE_PREFIX}'."
+        )
+
     if any(char in name for char in FORBIDDEN_WILDCARD_CHARS):
         raise UnsafeRuleNamespaceError(
             f"Rule name '{name}' cannot contain wildcard characters."
