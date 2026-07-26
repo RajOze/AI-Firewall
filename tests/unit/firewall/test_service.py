@@ -844,3 +844,274 @@ def test_phase88_identity_preserved_across_transaction() -> None:
 
     # Removal target was identity.name
     assert provider.removed_names == [identity.name]
+
+
+# =====================================================================
+# PHASE 8.9 — CONCURRENT MUTATION SAFETY & TOCTOU HARDENING TESTS
+# =====================================================================
+
+import threading
+
+
+def test_phase89_concurrent_add_same_identity_serializes() -> None:
+    """Two concurrent ADD operations for the same rule name serialize; only one succeeds."""
+    provider = FakeFirewallProvider()
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-ConcurrentAdd",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    barrier = threading.Barrier(2)
+    results: list[Exception | FirewallRuleIdentity] = []
+    results_lock = threading.Lock()
+
+    def worker() -> None:
+        barrier.wait()
+        try:
+            res = service.add_rule(rule)
+            with results_lock:
+                results.append(res)
+        except Exception as exc:
+            with results_lock:
+                results.append(exc)
+
+    t1 = threading.Thread(target=worker)
+    t2 = threading.Thread(target=worker)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    # Exactly one succeeded and one raised FirewallCollisionError
+    successes = [r for r in results if isinstance(r, FirewallRuleIdentity)]
+    failures = [r for r in results if isinstance(r, FirewallCollisionError)]
+
+    assert len(successes) == 1
+    assert len(failures) == 1
+    assert len(provider.added_rules) == 1
+
+
+def test_phase89_concurrent_remove_same_identity_serializes() -> None:
+    """Two concurrent REMOVE operations for the same identity serialize; only one succeeds."""
+    provider = FakeFirewallProvider()
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-ConcurrentRemove",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+    identity = service.add_rule(rule)
+
+    barrier = threading.Barrier(2)
+    results: list[Exception | None] = []
+    results_lock = threading.Lock()
+
+    def worker() -> None:
+        barrier.wait()
+        try:
+            service.remove_rule(identity)
+            with results_lock:
+                results.append(None)
+        except Exception as exc:
+            with results_lock:
+                results.append(exc)
+
+    t1 = threading.Thread(target=worker)
+    t2 = threading.Thread(target=worker)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    # Exactly one succeeded (None) and one raised FirewallRuleNotFoundError
+    successes = [r for r in results if r is None]
+    failures = [r for r in results if isinstance(r, FirewallRuleNotFoundError)]
+
+    assert len(successes) == 1
+    assert len(failures) == 1
+    assert len(provider.removed_names) == 1
+
+
+def test_phase89_precheck_and_verification_inside_lock_boundary() -> None:
+    """Precheck and post-verification execute inside the transaction lock boundary."""
+    provider = FakeFirewallProvider()
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-LockBoundaryCheck",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    lock_held_during_precheck = False
+    lock_held_during_verification = False
+
+    original_rule_exists = provider.rule_exists
+
+    def spying_rule_exists(identity_or_name: FirewallRuleIdentity | str) -> bool:
+        nonlocal lock_held_during_precheck, lock_held_during_verification
+        is_held = service._lock.locked()
+        if not lock_held_during_precheck:
+            lock_held_during_precheck = is_held
+        else:
+            lock_held_during_verification = is_held
+        return original_rule_exists(identity_or_name)
+
+    provider.rule_exists = spying_rule_exists  # type: ignore[assignment]
+
+    service.add_rule(rule)
+
+    assert lock_held_during_precheck is True
+    assert lock_held_during_verification is True
+
+
+def test_phase89_lock_released_on_execution_failure() -> None:
+    """Lock must be released on provider execution failure, allowing subsequent mutations."""
+    from app.firewall.windows_provider import WindowsFirewallProviderError
+
+    class FailingProvider(FakeFirewallProvider):
+        def __init__(self) -> None:
+            super().__init__()
+            self.should_fail = True
+
+        def add_rule(self, rule: FirewallRule) -> FirewallRuleIdentity:
+            if self.should_fail:
+                raise WindowsFirewallProviderError("Execution failed")
+            return super().add_rule(rule)
+
+    provider = FailingProvider()
+    service = FirewallService(provider=provider)
+
+    rule1 = FirewallRule(
+        name="AI-Firewall-FailRule",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    with pytest.raises(WindowsFirewallProviderError):
+        service.add_rule(rule1)
+
+    assert service._lock.locked() is False
+
+    # Second addition succeeds after setting should_fail to False
+    provider.should_fail = False
+    rule2 = FirewallRule(
+        name="AI-Firewall-SuccessRule",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.2",
+    )
+
+    identity = service.add_rule(rule2)
+    assert isinstance(identity, FirewallRuleIdentity)
+    assert service._lock.locked() is False
+
+
+def test_phase89_lock_released_on_verification_failure() -> None:
+    """Lock must be released on post-verification failure, allowing subsequent mutations."""
+    provider = FakeFirewallProvider()
+    provider.auto_update_existence = False
+    service = FirewallService(provider=provider)
+
+    rule1 = FirewallRule(
+        name="AI-Firewall-Unverifiable1",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    with pytest.raises(FirewallCreationVerificationError):
+        service.add_rule(rule1)
+
+    assert service._lock.locked() is False
+
+    # Fix provider existence auto update and verify next mutation works
+    provider.auto_update_existence = True
+    rule2 = FirewallRule(
+        name="AI-Firewall-Verifiable2",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.2",
+    )
+
+    identity = service.add_rule(rule2)
+    assert isinstance(identity, FirewallRuleIdentity)
+    assert service._lock.locked() is False
+
+
+def test_phase89_lock_released_on_prestate_query_failure() -> None:
+    """Lock must be released on pre-state query failure, allowing subsequent mutations."""
+    from app.firewall.windows_provider import WindowsFirewallProviderError
+
+    class FailingPrecheckProvider(FakeFirewallProvider):
+        def __init__(self) -> None:
+            super().__init__()
+            self.should_fail = True
+
+        def rule_exists(self, identity_or_name: FirewallRuleIdentity | str) -> bool:
+            if self.should_fail:
+                raise WindowsFirewallProviderError("Query failed")
+            return super().rule_exists(identity_or_name)
+
+    provider = FailingPrecheckProvider()
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-PrecheckFailRule",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    with pytest.raises(WindowsFirewallProviderError):
+        service.add_rule(rule)
+
+    assert service._lock.locked() is False
+
+    provider.should_fail = False
+    identity = service.add_rule(rule)
+    assert isinstance(identity, FirewallRuleIdentity)
+    assert service._lock.locked() is False
+
+
+def test_phase89_at_most_once_mutation_under_concurrency() -> None:
+    """10 concurrent distinct add requests execute each provider mutation at most once."""
+    provider = FakeFirewallProvider()
+    service = FirewallService(provider=provider)
+
+    rules = [
+        FirewallRule(
+            name=f"AI-Firewall-Distinct-{i}",
+            action=FirewallAction.ALLOW,
+            direction=FirewallDirection.INBOUND,
+            remote_address=f"10.0.0.{i}",
+        )
+        for i in range(10)
+    ]
+
+    barrier = threading.Barrier(10)
+    threads: list[threading.Thread] = []
+
+    def worker(r: FirewallRule) -> None:
+        barrier.wait()
+        service.add_rule(r)
+
+    for r in rules:
+        t = threading.Thread(target=worker, args=(r,))
+        threads.append(t)
+        t.start()
+
+    for t in threads:
+        t.join()
+
+    assert len(provider.added_rules) == 10
+    added_names = {r.name for r in provider.added_rules}
+    assert added_names == {f"AI-Firewall-Distinct-{i}" for i in range(10)}
