@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { checkFirewallRule, FirewallRuleResponse } from "../../services/api";
+import { checkFirewallRule } from "../../services/api";
+import type { FirewallRuleResponse } from "../../services/api";
 
 function FirewallRuleInspector() {
   const [ruleName, setRuleName] = useState("AI-Firewall-block-inbound-sample");
@@ -15,8 +16,8 @@ function FirewallRuleInspector() {
     try {
       const res = await checkFirewallRule(ruleName.trim());
       setResult(res);
-    } catch (err: any) {
-      setError(err.message || "Rule lookup failed.");
+    } catch (err) {
+      setError((err as Error).message || "Rule lookup failed.");
       setResult(null);
     } finally {
       setChecking(false);

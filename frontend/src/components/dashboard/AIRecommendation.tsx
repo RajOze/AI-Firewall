@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { analyzePrompt, AnalyzeResponse } from "../../services/api";
+import { analyzePrompt } from "../../services/api";
+import type { AnalyzeResponse } from "../../services/api";
 
 function AIRecommendation() {
   const [inputText, setInputText] = useState("");
@@ -15,8 +16,8 @@ function AIRecommendation() {
     try {
       const res = await analyzePrompt(inputText);
       setResult(res);
-    } catch (err: any) {
-      setError(err.message || "Analysis request failed.");
+    } catch (err) {
+      setError((err as Error).message || "Analysis request failed.");
     } finally {
       setAnalyzing(false);
     }
