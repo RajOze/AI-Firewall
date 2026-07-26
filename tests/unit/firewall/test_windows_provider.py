@@ -5,7 +5,13 @@ from unittest.mock import patch
 
 import pytest
 
-from app.firewall.models import FirewallAction, FirewallDirection, FirewallRule
+from app.firewall.models import (
+    FirewallAction,
+    FirewallDirection,
+    FirewallProfileState,
+    FirewallRule,
+    WindowsCapabilityResult,
+)
 from app.firewall.windows_provider import (
     POWERSHELL_TIMEOUT_SECONDS,
     WindowsFirewallProvider,
@@ -363,4 +369,176 @@ def test_is_administrator_raises_provider_error_on_unexpected_exit_code() -> Non
     ):
         with pytest.raises(WindowsFirewallProviderError, match="Unexpected exit code 99"):
             provider.is_administrator()
+
+
+def test_get_capabilities_non_windows_platform() -> None:
+    """get_capabilities should return is_windows=False and default False/empty on non-Windows platforms."""
+    provider = WindowsFirewallProvider()
+    with patch("sys.platform", "linux"):
+        res = provider.get_capabilities()
+        assert res.is_windows is False
+        assert res.powershell_available is False
+        assert res.netsecurity_available is False
+        assert res.is_administrator is False
+        assert res.firewall_profiles == []
+
+
+def test_get_capabilities_windows_powershell_unavailable() -> None:
+    """get_capabilities should detect is_windows=True but powershell_available=False if PowerShell fails."""
+    provider = WindowsFirewallProvider()
+    with patch("sys.platform", "win32"):
+        with patch.object(
+            provider,
+            "_run_powershell",
+            side_effect=WindowsFirewallProviderError("PowerShell executable not found"),
+        ):
+            res = provider.get_capabilities()
+            assert res.is_windows is True
+            assert res.powershell_available is False
+            assert res.netsecurity_available is False
+            assert res.is_administrator is False
+            assert res.firewall_profiles == []
+
+
+def test_get_capabilities_powershell_available_netsecurity_unavailable() -> None:
+    """get_capabilities should report netsecurity_available=False if Get-NetFirewallProfile fails."""
+    provider = WindowsFirewallProvider()
+    with patch("sys.platform", "win32"):
+        with patch.object(
+            provider,
+            "_run_powershell",
+            side_effect=[
+                subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="Missing module"),
+            ],
+        ):
+            res = provider.get_capabilities()
+            assert res.is_windows is True
+            assert res.powershell_available is True
+            assert res.is_administrator is False
+            assert res.netsecurity_available is False
+            assert res.firewall_profiles == []
+
+
+def test_get_capabilities_administrator_true_and_profiles_parsed() -> None:
+    """get_capabilities should report is_administrator=True and parse firewall profiles correctly."""
+    provider = WindowsFirewallProvider()
+    json_stdout = (
+        '[{"Name": "Domain", "Enabled": 1}, '
+        '{"Name": "Private", "Enabled": 1}, '
+        '{"Name": "Public", "Enabled": 0}]'
+    )
+    with patch("sys.platform", "win32"):
+        with patch.object(
+            provider,
+            "_run_powershell",
+            side_effect=[
+                subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=0, stdout=json_stdout, stderr=""),
+            ],
+        ):
+            res = provider.get_capabilities()
+            assert res.is_windows is True
+            assert res.powershell_available is True
+            assert res.is_administrator is True
+            assert res.netsecurity_available is True
+            assert len(res.firewall_profiles) == 3
+            assert res.firewall_profiles[0] == FirewallProfileState(name="Domain", enabled=True)
+            assert res.firewall_profiles[1] == FirewallProfileState(name="Private", enabled=True)
+            assert res.firewall_profiles[2] == FirewallProfileState(name="Public", enabled=False)
+
+
+def test_get_capabilities_single_profile_dict_and_string_enabled() -> None:
+    """get_capabilities should parse single dict output and string enabled values correctly."""
+    provider = WindowsFirewallProvider()
+    json_stdout = '{"Name": "Public", "Enabled": "True"}'
+    with patch("sys.platform", "win32"):
+        with patch.object(
+            provider,
+            "_run_powershell",
+            side_effect=[
+                subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=0, stdout=json_stdout, stderr=""),
+            ],
+        ):
+            res = provider.get_capabilities()
+            assert res.is_windows is True
+            assert res.powershell_available is True
+            assert res.is_administrator is False
+            assert res.netsecurity_available is True
+            assert res.firewall_profiles == [FirewallProfileState(name="Public", enabled=True)]
+
+
+def test_get_capabilities_malformed_json_raises_provider_error() -> None:
+    """get_capabilities should raise WindowsFirewallProviderError when stdout is malformed JSON."""
+    provider = WindowsFirewallProvider()
+    with patch("sys.platform", "win32"):
+        with patch.object(
+            provider,
+            "_run_powershell",
+            side_effect=[
+                subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=0, stdout="[INVALID JSON", stderr=""),
+            ],
+        ):
+            with pytest.raises(
+                WindowsFirewallProviderError, match="Failed to parse firewall profiles output: invalid JSON"
+            ):
+                provider.get_capabilities()
+
+
+def test_get_capabilities_missing_required_fields_raises_provider_error() -> None:
+    """get_capabilities should raise WindowsFirewallProviderError when profile object missing required fields."""
+    provider = WindowsFirewallProvider()
+    json_stdout = '[{"Name": "Domain"}]'
+    with patch("sys.platform", "win32"):
+        with patch.object(
+            provider,
+            "_run_powershell",
+            side_effect=[
+                subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=0, stdout=json_stdout, stderr=""),
+            ],
+        ):
+            with pytest.raises(
+                WindowsFirewallProviderError,
+                match="Failed to parse firewall profiles output: profile object missing 'Name' or 'Enabled'",
+            ):
+                provider.get_capabilities()
+
+
+def test_get_capabilities_invalid_enabled_type_raises_provider_error() -> None:
+    """get_capabilities should raise WindowsFirewallProviderError when 'Enabled' field type is invalid."""
+    provider = WindowsFirewallProvider()
+    json_stdout = '[{"Name": "Domain", "Enabled": [1, 2]}]'
+    with patch("sys.platform", "win32"):
+        with patch.object(
+            provider,
+            "_run_powershell",
+            side_effect=[
+                subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=""),
+                subprocess.CompletedProcess(args=[], returncode=0, stdout=json_stdout, stderr=""),
+            ],
+        ):
+            with pytest.raises(
+                WindowsFirewallProviderError,
+                match="Failed to parse firewall profiles output: invalid 'Enabled' value type",
+            ):
+                provider.get_capabilities()
+
+
+def test_get_capability_result_alias_returns_capabilities() -> None:
+    """get_capability_result alias should call get_capabilities."""
+    provider = WindowsFirewallProvider()
+    with patch("sys.platform", "linux"):
+        res = provider.get_capability_result()
+        assert res == provider.get_capabilities()
+
+
 

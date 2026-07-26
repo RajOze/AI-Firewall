@@ -1,8 +1,16 @@
 """Windows Firewall provider implementation for AI Firewall."""
 
+import json
 import subprocess
+import sys
 
-from app.firewall.models import FirewallAction, FirewallDirection, FirewallRule
+from app.firewall.models import (
+    FirewallAction,
+    FirewallDirection,
+    FirewallProfileState,
+    FirewallRule,
+    WindowsCapabilityResult,
+)
 from app.firewall.provider import FirewallProvider
 
 
@@ -271,3 +279,120 @@ class WindowsFirewallProvider(FirewallProvider):
             raise WindowsFirewallProviderError(
                 f"Unexpected exit code {result.returncode} checking administrator privileges{error_details}"
             )
+
+    def get_capabilities(self) -> WindowsCapabilityResult:
+        """Inspect host capabilities and firewall profile statuses in read-only mode.
+
+        Returns:
+            WindowsCapabilityResult dataclass instance representing host readiness.
+        """
+        is_windows = sys.platform == "win32"
+        if not is_windows:
+            return WindowsCapabilityResult(
+                is_windows=False,
+                powershell_available=False,
+                netsecurity_available=False,
+                is_administrator=False,
+                firewall_profiles=[],
+            )
+
+        powershell_available = False
+        is_admin = False
+        netsecurity_available = False
+        firewall_profiles: list[FirewallProfileState] = []
+
+        # 1. Check PowerShell availability
+        try:
+            ping_res = self._run_powershell("exit 0")
+            if ping_res.returncode == 0:
+                powershell_available = True
+        except WindowsFirewallProviderError:
+            powershell_available = False
+
+        if not powershell_available:
+            return WindowsCapabilityResult(
+                is_windows=True,
+                powershell_available=False,
+                netsecurity_available=False,
+                is_administrator=False,
+                firewall_profiles=[],
+            )
+
+        # 2. Check Administrator status
+        try:
+            is_admin = self.is_administrator()
+        except WindowsFirewallProviderError:
+            is_admin = False
+
+        # 3. Check NetSecurity availability and retrieve Firewall Profiles
+        script = """
+        try {
+            if (-not (Get-Command Get-NetFirewallProfile -ErrorAction SilentlyContinue)) {
+                exit 1
+            }
+            $profiles = Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled
+            if (-not $profiles) {
+                exit 1
+            }
+            $profiles | ConvertTo-Json -Compress
+        } catch {
+            [Console]::Error.WriteLine($_)
+            exit 2
+        }
+        """
+
+        try:
+            result = self._run_powershell(script)
+        except WindowsFirewallProviderError:
+            result = None
+
+        if result is not None and result.returncode == 0:
+            netsecurity_available = True
+            raw_stdout = result.stdout.strip()
+            if not raw_stdout:
+                raise WindowsFirewallProviderError(
+                    "Failed to parse firewall profiles output: empty response"
+                )
+
+            try:
+                data = json.loads(raw_stdout)
+            except json.JSONDecodeError as e:
+                raise WindowsFirewallProviderError(
+                    "Failed to parse firewall profiles output: invalid JSON"
+                ) from e
+
+            if isinstance(data, dict):
+                data = [data]
+
+            if not isinstance(data, list) or not data:
+                raise WindowsFirewallProviderError(
+                    "Failed to parse firewall profiles output: expected non-empty list of profile objects"
+                )
+
+            for item in data:
+                if not isinstance(item, dict) or "Name" not in item or "Enabled" not in item:
+                    raise WindowsFirewallProviderError(
+                        "Failed to parse firewall profiles output: profile object missing 'Name' or 'Enabled'"
+                    )
+                name = str(item["Name"])
+                raw_enabled = item["Enabled"]
+                if not isinstance(raw_enabled, (bool, int, str)):
+                    raise WindowsFirewallProviderError(
+                        "Failed to parse firewall profiles output: invalid 'Enabled' value type"
+                    )
+                enabled = raw_enabled in (1, True, "1", "True", "Enabled")
+                firewall_profiles.append(
+                    FirewallProfileState(name=name, enabled=enabled)
+                )
+
+        return WindowsCapabilityResult(
+            is_windows=True,
+            powershell_available=powershell_available,
+            netsecurity_available=netsecurity_available,
+            is_administrator=is_admin,
+            firewall_profiles=firewall_profiles,
+        )
+
+    def get_capability_result(self) -> WindowsCapabilityResult:
+        """Alias for get_capabilities."""
+        return self.get_capabilities()
