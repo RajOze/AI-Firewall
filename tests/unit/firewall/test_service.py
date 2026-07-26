@@ -565,3 +565,83 @@ def test_adversarial_invalid_rule_exists_target_type_rejected() -> None:
 
     with pytest.raises(FirewallValidationError, match="must be a FirewallRuleIdentity or string"):
         service.rule_exists(None)  # type: ignore[arg-type]
+
+
+def test_phase87_valid_trusted_mutation_reaches_executor_and_verifies() -> None:
+    """Valid trusted mutation reaches provider executor and post-mutation verification succeeds."""
+    provider = FakeFirewallProvider()
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-Phase87-Trusted",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.100",
+    )
+
+    identity = service.add_rule(rule)
+
+    assert isinstance(identity, FirewallRuleIdentity)
+    assert identity.display_name == "AI-Firewall-Phase87-Trusted"
+    assert identity.name == "AI-Firewall-id-AI-Firewall-Phase87-Trusted"
+    assert provider.rule_exists(identity.name) is True
+    assert len(provider.added_rules) == 1
+
+
+def test_phase87_unvalidated_raw_input_cannot_reach_executor() -> None:
+    """Raw input with invalid IP address cannot reach provider executor."""
+    provider = FakeFirewallProvider()
+    service = FirewallService(provider=provider)
+
+    invalid_rule = FirewallRule(
+        name="AI-Firewall-InvalidIP",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="invalid-ip-address",
+    )
+
+    with pytest.raises(FirewallValidationError, match="valid IPv4/IPv6 address"):
+        service.add_rule(invalid_rule)
+
+    assert provider.added_rules == []
+
+
+def test_phase87_execution_failure_raises_error_without_reporting_success() -> None:
+    """OS/subprocess execution error in provider raises error and does not verify or report success."""
+    from app.firewall.windows_provider import WindowsFirewallProviderError
+
+    class FailingProvider(FakeFirewallProvider):
+        def add_rule(self, rule: FirewallRule) -> FirewallRuleIdentity:
+            raise WindowsFirewallProviderError("PowerShell command failed")
+
+    provider = FailingProvider()
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-FailingOS",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    with pytest.raises(WindowsFirewallProviderError, match="PowerShell command failed"):
+        service.add_rule(rule)
+
+
+def test_phase87_post_mutation_verification_failure_raises_creation_error() -> None:
+    """Post-mutation state verification failure raises FirewallCreationVerificationError."""
+    provider = FakeFirewallProvider()
+    provider.auto_update_existence = False  # provider does not update existence_checks
+    service = FirewallService(provider=provider)
+
+    rule = FirewallRule(
+        name="AI-Firewall-Unverifiable",
+        action=FirewallAction.ALLOW,
+        direction=FirewallDirection.INBOUND,
+        remote_address="10.0.0.1",
+    )
+
+    with pytest.raises(FirewallCreationVerificationError, match="Post-creation verification failed"):
+        service.add_rule(rule)
+
+    assert len(provider.added_rules) == 1
