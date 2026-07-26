@@ -1,4 +1,4 @@
-"""Unit tests for Firewall API endpoints and safe read-only dependency wiring."""
+"""Unit tests for Firewall API boundary hardening and safe read-only dependency wiring."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,14 +7,16 @@ from app.dependencies.firewall import get_firewall_service
 from app.firewall.models import FirewallRule, FirewallRuleIdentity
 from app.firewall.provider import FirewallProvider
 from app.firewall.service import FirewallService
+from app.firewall.windows_provider import WindowsFirewallProviderError
 from app.main import app
 
 
 class MutationFailingProvider(FirewallProvider):
-    """Fake FirewallProvider that raises AssertionError if any mutation method is called."""
+    """Fake FirewallProvider that tracks queries and fails immediately if mutated."""
 
     def __init__(self, exists_map: dict[str, bool] | None = None):
         self._exists_map = exists_map or {}
+        self.rule_exists_call_count = 0
 
     def add_rule(self, rule: FirewallRule) -> FirewallRuleIdentity:
         raise AssertionError("Mutation path 'add_rule' invoked during read-only operation!")
@@ -23,6 +25,7 @@ class MutationFailingProvider(FirewallProvider):
         raise AssertionError("Mutation path 'remove_rule' invoked during read-only operation!")
 
     def rule_exists(self, identity_or_name: FirewallRuleIdentity | str) -> bool:
+        self.rule_exists_call_count += 1
         name_key = (
             identity_or_name.name
             if isinstance(identity_or_name, FirewallRuleIdentity)
@@ -32,6 +35,16 @@ class MutationFailingProvider(FirewallProvider):
 
     def is_administrator(self) -> bool:
         return True
+
+
+class QueryFailingProvider(MutationFailingProvider):
+    """Fake FirewallProvider whose rule_exists raises a sensitive internal error."""
+
+    def rule_exists(self, identity_or_name: FirewallRuleIdentity | str) -> bool:
+        self.rule_exists_call_count += 1
+        raise WindowsFirewallProviderError(
+            "SENSITIVE_INTERNAL_POWERSHELL_DETAIL: Failed execution at line 42 with exit code 2"
+        )
 
 
 @pytest.fixture
@@ -52,8 +65,8 @@ def test_firewall_router_is_registered(client):
     assert response.status_code == 200
 
 
-def test_endpoint_returns_expected_response_when_rule_exists(client):
-    """Verify endpoint returns exists=True when service reports rule exists."""
+def test_valid_existing_identity_returns_200(client):
+    """Verify endpoint returns exists=True when rule exists."""
     provider = MutationFailingProvider(exists_map={"AI-Firewall-rule1": True})
     service = FirewallService(provider=provider)
     app.dependency_overrides[get_firewall_service] = lambda: service
@@ -66,8 +79,8 @@ def test_endpoint_returns_expected_response_when_rule_exists(client):
     }
 
 
-def test_endpoint_returns_expected_response_when_rule_absent(client):
-    """Verify endpoint returns exists=False when service reports rule absent."""
+def test_valid_absent_identity_returns_200(client):
+    """Verify endpoint returns exists=False when rule is absent."""
     provider = MutationFailingProvider(exists_map={"AI-Firewall-rule1": False})
     service = FirewallService(provider=provider)
     app.dependency_overrides[get_firewall_service] = lambda: service
@@ -78,6 +91,34 @@ def test_endpoint_returns_expected_response_when_rule_absent(client):
         "rule_name": "AI-Firewall-rule1",
         "exists": False,
     }
+
+
+def test_invalid_identity_fails_validation_before_provider_query(client):
+    """Verify domain validation occurs BEFORE provider query is called."""
+    provider = MutationFailingProvider()
+    service = FirewallService(provider=provider)
+    app.dependency_overrides[get_firewall_service] = lambda: service
+
+    # Rule name exceeding max length (128 chars)
+    long_rule_name = "A" * 130
+    response = client.get(f"/firewall/rules/{long_rule_name}")
+    assert response.status_code == 400
+    assert "exceeds 128 characters" in response.json()["detail"]
+    # Explicit proof: provider rule_exists was NEVER called
+    assert provider.rule_exists_call_count == 0
+
+
+def test_provider_query_failure_does_not_leak_internal_details(client):
+    """Verify provider query failure returns 500 and does NOT leak internal/PowerShell details."""
+    provider = QueryFailingProvider()
+    service = FirewallService(provider=provider)
+    app.dependency_overrides[get_firewall_service] = lambda: service
+
+    response = client.get("/firewall/rules/AI-Firewall-test")
+    assert response.status_code == 500
+    response_text = response.text
+    assert "SENSITIVE_INTERNAL_POWERSHELL_DETAIL" not in response_text
+    assert response.json() == {"detail": "Firewall query operation failed."}
 
 
 def test_dependency_override_is_honored(client):
@@ -94,17 +135,27 @@ def test_dependency_override_is_honored(client):
     assert res2.json()["exists"] is False
 
 
-def test_invalid_rule_name_validation_error_mapped_to_400(client):
-    """Verify empty/spaces-only or malformed rule name raises 400 Bad Request."""
-    provider = MutationFailingProvider()
+def test_mutation_trap_prevents_any_mutation_invocation(client):
+    """Explicit mutation safety test: provider mutation methods fail immediately if called."""
+    provider = MutationFailingProvider(exists_map={"AI-Firewall-safe-rule": True})
     service = FirewallService(provider=provider)
     app.dependency_overrides[get_firewall_service] = lambda: service
 
-    # Rule name exceeding max length (128 chars)
-    long_rule_name = "A" * 130
-    response = client.get(f"/firewall/rules/{long_rule_name}")
-    assert response.status_code == 400
-    assert "exceeds 128 characters" in response.json()["detail"]
+    response = client.get("/firewall/rules/AI-Firewall-safe-rule")
+    assert response.status_code == 200
+    assert response.json() == {
+        "rule_name": "AI-Firewall-safe-rule",
+        "exists": True,
+    }
+
+
+def test_direct_provider_isolation_in_api_module():
+    """Verify API module does not import or instantiate WindowsFirewallProvider."""
+    import app.api.firewall as firewall_api_module
+
+    module_content = open(firewall_api_module.__file__, "r", encoding="utf-8").read()
+    assert "WindowsFirewallProvider" not in module_content
+    assert "windows_provider" not in module_content
 
 
 def test_existing_health_endpoint_remains_intact(client):
@@ -123,20 +174,3 @@ def test_existing_analyze_endpoint_remains_intact(client):
     assert "score" in data
     assert "category" in data
     assert "reason" in data
-
-
-def test_mutation_safety_guard_prevents_any_mutation_invocation(client):
-    """Explicit mutation safety test: provider mutation methods fail immediately if called.
-
-    Endpoint execution must succeed without calling add_rule or remove_rule.
-    """
-    provider = MutationFailingProvider(exists_map={"AI-Firewall-safe-rule": True})
-    service = FirewallService(provider=provider)
-    app.dependency_overrides[get_firewall_service] = lambda: service
-
-    response = client.get("/firewall/rules/AI-Firewall-safe-rule")
-    assert response.status_code == 200
-    assert response.json() == {
-        "rule_name": "AI-Firewall-safe-rule",
-        "exists": True,
-    }

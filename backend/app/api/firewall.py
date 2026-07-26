@@ -3,10 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies.firewall import get_firewall_service
-from app.firewall.exceptions import FirewallMutationError
 from app.firewall.service import FirewallService
 from app.firewall.validator import FirewallValidationError
-from app.firewall.windows_provider import WindowsFirewallProviderError
 from app.models.response import FirewallRuleStatusResponse
 
 router = APIRouter(
@@ -27,6 +25,7 @@ def get_firewall_rule_status(
     """Query whether a firewall rule exists by rule name.
 
     Safe, read-only endpoint that delegates strictly to FirewallService.rule_exists().
+    Un-trusted input is validated by domain rules prior to provider query.
     """
     try:
         exists = firewall_service.rule_exists(rule_name)
@@ -36,7 +35,7 @@ def get_firewall_rule_status(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-    except (WindowsFirewallProviderError, FirewallMutationError) as exc:
+    except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Firewall query operation failed.",
