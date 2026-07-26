@@ -1,6 +1,6 @@
 import Header from "../components/layout/Header";
 import Sidebar from "../components/layout/Sidebar";
-import StatCard from "../components/dashboard/StatCard";
+import StatCard from "../components/dashboard/Statcard";
 import ThreatList from "../components/dashboard/ThreatList";
 import ProcessTable from "../components/dashboard/ProcessTable";
 import ConnectionTable from "../components/dashboard/ConnectionTable";
@@ -8,6 +8,8 @@ import AIRecommendation from "../components/dashboard/AIRecommendation";
 import SystemStatus from "../components/dashboard/SystemStatus";
 import LiveActivity from "../components/dashboard/LiveActivity";
 import NotificationPanel from "../components/dashboard/NotificationPanel";
+import NetworkTraffic from "../components/dashboard/NetworkTraffic";
+import ThreatAnalytics from "../components/dashboard/ThreatAnalytics";
 
 function Dashboard() {
   return (
@@ -68,6 +70,10 @@ function Dashboard() {
           <AIRecommendation />
 
           <NotificationPanel />
+
+          <NetworkTraffic />
+
+          <ThreatAnalytics />
         </section>
       </main>
     </div>

@@ -2,51 +2,47 @@ function LiveActivity() {
   const activities = [
     {
       time: "12:31",
-      event: "Chrome.exe connected to 142.250.183.14",
-      type: "info",
+      title: "Chrome.exe",
+      description: "Connected to 142.250.183.14",
+      color: "#22c55e",
     },
     {
       time: "12:32",
-      event: "PowerShell opened outbound TCP connection",
-      type: "warning",
+      title: "PowerShell",
+      description: "Outbound TCP connection detected",
+      color: "#f59e0b",
     },
     {
       time: "12:33",
-      event: "Firewall blocked Unknown.exe",
-      type: "danger",
+      title: "Firewall",
+      description: "Blocked Unknown.exe",
+      color: "#ef4444",
     },
     {
       time: "12:35",
-      event: "AI classified Malware.exe as High Risk",
-      type: "danger",
+      title: "AI Engine",
+      description: "Classified Malware.exe as High Risk",
+      color: "#8b5cf6",
     },
   ];
-
-  const getColor = (type: string) => {
-    switch (type) {
-      case "danger":
-        return "#ef4444";
-      case "warning":
-        return "#f59e0b";
-      default:
-        return "#22c55e";
-    }
-  };
 
   return (
     <div className="panel live-activity">
       <h3>📡 Live Activity</h3>
 
-      {activities.map((activity, index) => (
+      {activities.map((item, index) => (
         <div key={index} className="activity-item">
           <div
             className="activity-dot"
-            style={{ background: getColor(activity.type) }}
-          ></div>
+            style={{ background: item.color }}
+          />
 
           <div className="activity-content">
-            <small>{activity.time}</small>
-            <p>{activity.event}</p>
+            <small>{item.time}</small>
+
+            <strong>{item.title}</strong>
+
+            <p>{item.description}</p>
           </div>
         </div>
       ))}
