@@ -10,6 +10,9 @@ class WindowsFirewallProviderError(RuntimeError):
     """Raised when Windows Firewall operations fail."""
 
 
+# Timeout for PowerShell command execution in seconds
+POWERSHELL_TIMEOUT_SECONDS = 15
+
 ACTION_MAP = {
     FirewallAction.ALLOW: "Allow",
     FirewallAction.BLOCK: "Block",
@@ -33,6 +36,9 @@ class WindowsFirewallProvider(FirewallProvider):
 
         Returns:
             CompletedProcess instance from subprocess.run
+
+        Raises:
+            WindowsFirewallProviderError: If the PowerShell command times out, the executable is not found, or fails to start
         """
         cmd = [
             "powershell.exe",
@@ -43,7 +49,26 @@ class WindowsFirewallProvider(FirewallProvider):
             "-Command",
             script,
         ] + list(args)
-        return subprocess.run(cmd, capture_output=True, text=True, check=False)
+        try:
+            return subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=POWERSHELL_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as e:
+            raise WindowsFirewallProviderError(
+                f"PowerShell command timed out after {POWERSHELL_TIMEOUT_SECONDS} seconds"
+            ) from e
+        except FileNotFoundError:
+            raise WindowsFirewallProviderError(
+                "PowerShell executable not found. Ensure powershell.exe is installed and in the PATH."
+            )
+        except OSError as e:
+            raise WindowsFirewallProviderError(
+                f"Failed to execute PowerShell command: {e}"
+            ) from e
 
     def add_rule(self, rule: FirewallRule) -> None:
         """Add a firewall rule using New-NetFirewallRule.
@@ -204,4 +229,45 @@ class WindowsFirewallProvider(FirewallProvider):
             error_details = f": {stderr}" if stderr else ""
             raise WindowsFirewallProviderError(
                 f"Unexpected exit code {result.returncode} checking firewall rule '{name}'{error_details}"
+            )
+
+    def is_administrator(self) -> bool:
+        """Check if the current process is running with administrator privileges.
+
+        Returns:
+            True if running with administrator privileges, False if not.
+
+        Raises:
+            WindowsFirewallProviderError: If the PowerShell command fails unexpectedly.
+        """
+        script = """
+        try {
+            $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+            if ($isAdmin) {
+                exit 0
+            } else {
+                exit 1
+            }
+        } catch {
+            [Console]::Error.WriteLine($_)
+            exit 2
+        }
+        """
+
+        result = self._run_powershell(script)
+        if result.returncode == 0:
+            return True
+        elif result.returncode == 1:
+            return False
+        elif result.returncode == 2:
+            stderr = result.stderr.strip()
+            error_details = f": {stderr}" if stderr else ""
+            raise WindowsFirewallProviderError(
+                f"Failed to check administrator privileges{error_details}"
+            )
+        else:
+            stderr = result.stderr.strip()
+            error_details = f": {stderr}" if stderr else ""
+            raise WindowsFirewallProviderError(
+                f"Unexpected exit code {result.returncode} checking administrator privileges{error_details}"
             )

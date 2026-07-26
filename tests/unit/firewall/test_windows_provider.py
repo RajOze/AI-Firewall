@@ -7,6 +7,7 @@ import pytest
 
 from app.firewall.models import FirewallAction, FirewallDirection, FirewallRule
 from app.firewall.windows_provider import (
+    POWERSHELL_TIMEOUT_SECONDS,
     WindowsFirewallProvider,
     WindowsFirewallProviderError,
 )
@@ -263,3 +264,103 @@ def test_add_rule_raises_value_error_for_invalid_direction() -> None:
         with pytest.raises(ValueError, match="Unsupported firewall direction: INVALID_DIRECTION"):
             provider.add_rule(invalid_rule)
         mock_run.assert_not_called()
+
+
+def test_run_powershell_executes_with_timeout_and_no_shell() -> None:
+    """_run_powershell should pass timeout and not use shell=True."""
+    provider = WindowsFirewallProvider()
+    with patch(
+        "subprocess.run",
+        return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+    ) as mock_sub_run:
+        provider._run_powershell("Write-Host Test", "arg1")
+
+        mock_sub_run.assert_called_once()
+        _, kwargs = mock_sub_run.call_args
+        assert kwargs.get("timeout") == POWERSHELL_TIMEOUT_SECONDS
+        assert kwargs.get("shell") is not True
+
+
+def test_run_powershell_raises_provider_error_on_timeout() -> None:
+    """_run_powershell should convert subprocess.TimeoutExpired to WindowsFirewallProviderError."""
+    provider = WindowsFirewallProvider()
+    with patch(
+        "subprocess.run",
+        side_effect=subprocess.TimeoutExpired(cmd="powershell.exe", timeout=15),
+    ):
+        with pytest.raises(WindowsFirewallProviderError, match="timed out"):
+            provider._run_powershell("Write-Host Test")
+
+
+def test_run_powershell_raises_provider_error_on_file_not_found() -> None:
+    """_run_powershell should convert FileNotFoundError to WindowsFirewallProviderError."""
+    provider = WindowsFirewallProvider()
+    with patch("subprocess.run", side_effect=FileNotFoundError("powershell.exe not found")):
+        with pytest.raises(WindowsFirewallProviderError, match="PowerShell executable not found"):
+            provider._run_powershell("Write-Host Test")
+
+
+def test_run_powershell_raises_provider_error_on_os_error() -> None:
+    """_run_powershell should convert OSError to WindowsFirewallProviderError."""
+    provider = WindowsFirewallProvider()
+    with patch("subprocess.run", side_effect=OSError("Permission denied")):
+        with pytest.raises(
+            WindowsFirewallProviderError, match="Failed to execute PowerShell command"
+        ):
+            provider._run_powershell("Write-Host Test")
+
+
+def test_is_administrator_returns_true_when_exit_code_0() -> None:
+    """is_administrator should return True when process exits with 0."""
+    provider = WindowsFirewallProvider()
+    with patch.object(
+        provider,
+        "_run_powershell",
+        return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+    ) as mock_run:
+        assert provider.is_administrator() is True
+        mock_run.assert_called_once()
+        script = mock_run.call_args[0][0]
+        assert "WindowsBuiltInRole" in script
+
+
+def test_is_administrator_returns_false_when_exit_code_1() -> None:
+    """is_administrator should return False when process exits with 1."""
+    provider = WindowsFirewallProvider()
+    with patch.object(
+        provider,
+        "_run_powershell",
+        return_value=subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr=""),
+    ):
+        assert provider.is_administrator() is False
+
+
+def test_is_administrator_raises_provider_error_on_exit_code_2() -> None:
+    """is_administrator should raise WindowsFirewallProviderError when script fails with exit code 2."""
+    provider = WindowsFirewallProvider()
+    with patch.object(
+        provider,
+        "_run_powershell",
+        return_value=subprocess.CompletedProcess(
+            args=[], returncode=2, stdout="", stderr="Security check exception."
+        ),
+    ):
+        with pytest.raises(
+            WindowsFirewallProviderError, match="Failed to check administrator privileges"
+        ):
+            provider.is_administrator()
+
+
+def test_is_administrator_raises_provider_error_on_unexpected_exit_code() -> None:
+    """is_administrator should raise WindowsFirewallProviderError on unexpected exit code."""
+    provider = WindowsFirewallProvider()
+    with patch.object(
+        provider,
+        "_run_powershell",
+        return_value=subprocess.CompletedProcess(
+            args=[], returncode=99, stdout="", stderr="Fatal error."
+        ),
+    ):
+        with pytest.raises(WindowsFirewallProviderError, match="Unexpected exit code 99"):
+            provider.is_administrator()
+
