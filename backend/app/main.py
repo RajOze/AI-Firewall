@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 # pyrefly: ignore [missing-import]
 from app.api.analyze import router as analyze_router
+from app.api.firewall import router as firewall_router
 
 # Load environment variables
 load_dotenv()
@@ -17,6 +18,7 @@ app = FastAPI(
 
 # Register API routes
 app.include_router(analyze_router)
+app.include_router(firewall_router)
 
 
 @app.get("/")
