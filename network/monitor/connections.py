@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import datetime, timezone
 import socket
@@ -14,7 +14,7 @@ def _address(addr):
 
 
 def _process_name(pid):
-    if pid is None:
+    if pid is None or pid == 0:
         return None
 
     try:
