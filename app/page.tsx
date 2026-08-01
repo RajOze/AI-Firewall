@@ -1,151 +1,133 @@
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#050816] via-[#0B1120] to-[#050816] p-6">
-      {/* Welcome Section */}
-      <div className="mb-8 animate-fade-in">
-        <h1 className="text-4xl font-bold text-[#F1F5F9] mb-2">Welcome to SentinelAI</h1>
-        <p className="text-[#94A3B8]">Real-time enterprise cybersecurity monitoring and AI-powered threat detection</p>
+    <div className="min-h-screen p-8" style={{ background: 'linear-gradient(135deg, rgba(3, 7, 18, 0.5) 0%, rgba(10, 14, 26, 0.3) 100%)' }}>
+      {/* Welcome Section - Premium */}
+      <div className="mb-12 space-y-3">
+        <h1 className="text-5xl font-bold tracking-tight text-gradient">
+          Security Dashboard
+        </h1>
+        <p className="text-[#94a3b8] text-lg">Real-time enterprise cybersecurity monitoring powered by advanced AI threat detection</p>
       </div>
 
-      {/* Dashboard Grid - Shell Showcase */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Status Cards */}
-        <div className="glass-card p-6 rounded-2xl hover:shadow-lg transition-all duration-300 hover:border-[rgba(79,124,255,0.3)]">
-          <div className="flex items-start justify-between mb-4">
+      {/* Dashboard Grid - Premium Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {/* Status Cards - Premium */}
+        <div className="card-premium group" style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 100%)', borderColor: 'rgba(16, 185, 129, 0.15)' }}>
+          <div className="flex items-start justify-between mb-6">
             <div>
-              <p className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1">
+              <p className="text-xs font-bold text-[#94a3b8] uppercase tracking-widest mb-2">
                 Protection Status
               </p>
-              <p className="text-3xl font-bold text-[#22C55E]">Protected</p>
+              <p className="text-4xl font-bold text-[#10b981]">Protected</p>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-[#22C55E] to-[#00E5FF] rounded-2xl flex items-center justify-center opacity-70" />
+            <div className="w-14 h-14 rounded-[14px] flex items-center justify-center flex-shrink-0 group-hover:shadow-glow transition-all duration-300 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)' }}>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
+            </div>
           </div>
-          <p className="text-xs text-[#94A3B8]">All systems operational and monitored</p>
+          <p className="text-sm text-[#94a3b8]">All systems operational and monitored</p>
         </div>
 
-        <div className="glass-card p-6 rounded-2xl hover:shadow-lg transition-all duration-300 hover:border-[rgba(79,124,255,0.3)]">
-          <div className="flex items-start justify-between mb-4">
+        <div className="card-premium group" style={{ background: 'linear-gradient(135deg, rgba(61, 97, 255, 0.08) 0%, rgba(61, 97, 255, 0.02) 100%)', borderColor: 'rgba(61, 97, 255, 0.15)' }}>
+          <div className="flex items-start justify-between mb-6">
             <div>
-              <p className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1">
+              <p className="text-xs font-bold text-[#94a3b8] uppercase tracking-widest mb-2">
                 Active Threats
               </p>
-              <p className="text-3xl font-bold text-[#4F7CFF]">0</p>
+              <p className="text-4xl font-bold text-[#3d61ff]">0</p>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-[#4F7CFF] to-[#7C3AED] rounded-2xl flex items-center justify-center opacity-70" />
+            <div className="w-14 h-14 rounded-[14px] flex items-center justify-center flex-shrink-0 group-hover:shadow-glow transition-all duration-300 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #3d61ff, #7c3aed)' }}>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
+            </div>
           </div>
-          <p className="text-xs text-[#94A3B8]">No active threats detected</p>
+          <p className="text-sm text-[#94a3b8]">No active threats detected</p>
         </div>
 
-        <div className="glass-card p-6 rounded-2xl hover:shadow-lg transition-all duration-300 hover:border-[rgba(79,124,255,0.3)]">
-          <div className="flex items-start justify-between mb-4">
+        <div className="card-premium group pulse-glow" style={{ background: 'linear-gradient(135deg, rgba(0, 217, 255, 0.08) 0%, rgba(0, 217, 255, 0.02) 100%)', borderColor: 'rgba(0, 217, 255, 0.15)' }}>
+          <div className="flex items-start justify-between mb-6">
             <div>
-              <p className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1">
+              <p className="text-xs font-bold text-[#94a3b8] uppercase tracking-widest mb-2">
                 AI Engine
               </p>
-              <p className="text-3xl font-bold text-[#00E5FF]">Running</p>
+              <p className="text-4xl font-bold text-[#00d9ff]">Running</p>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-[#00E5FF] to-[#4F7CFF] rounded-2xl flex items-center justify-center opacity-70 animate-pulse" />
+            <div className="w-14 h-14 rounded-[14px] flex items-center justify-center flex-shrink-0 group-hover:shadow-glow transition-all duration-300 relative overflow-hidden animate-pulse" style={{ background: 'linear-gradient(135deg, #00d9ff, #3d61ff)' }}>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent" />
+            </div>
           </div>
-          <p className="text-xs text-[#94A3B8]">Confidence: 99.8%</p>
+          <p className="text-sm text-[#94a3b8]">Confidence: 99.8%</p>
         </div>
 
-        {/* Large Info Section */}
-        <div className="md:col-span-2 lg:col-span-3 glass-card p-8 rounded-2xl border border-[rgba(79,124,255,0.15)]">
-          <h2 className="text-2xl font-bold text-[#F1F5F9] mb-6">Application Shell</h2>
-          <div className="grid md:grid-cols-2 gap-8">
+        {/* Large Feature Section */}
+        <div className="md:col-span-2 lg:col-span-3 card-premium" style={{ background: 'linear-gradient(135deg, rgba(61, 97, 255, 0.06) 0%, rgba(0, 217, 255, 0.03) 100%)', borderColor: 'rgba(61, 97, 255, 0.15)' }}>
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-[#f8fafc] mb-2">Enterprise-Grade Application Shell</h2>
+            <p className="text-[#94a3b8]">Purpose-built for modern cybersecurity operations with AI-driven insights</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-12">
             <div>
-              <h3 className="text-sm font-semibold text-[#4F7CFF] uppercase tracking-wider mb-3">
-                Navigation Features
+              <h3 className="text-xs font-bold text-[#3d61ff] uppercase tracking-widest mb-4">
+                Core Navigation
               </h3>
-              <ul className="space-y-2 text-sm text-[#94A3B8]">
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#22C55E] rounded-full" />
-                  Collapsible sidebar with 9 main menu items
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#22C55E] rounded-full" />
-                  Floating top navigation with system info
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#22C55E] rounded-full" />
-                  Real-time search across all systems
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#22C55E] rounded-full" />
-                  Notification center with badge counter
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#22C55E] rounded-full" />
-                  Theme toggle and user profile dropdown
-                </li>
+              <ul className="space-y-3">
+                {[
+                  'Collapsible sidebar with smart icon-only mode',
+                  'Floating premium top navigation with glassmorphism',
+                  'Unified search with AI-powered results',
+                  'Real-time notification system with badge counter',
+                  'Theme toggle and user profile management',
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-sm text-[#94a3b8]">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)' }} />
+                    <span>{item}</span>
+                  </li>
+                ))}
               </ul>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-[#4F7CFF] uppercase tracking-wider mb-3">
-                Design Elements
+              <h3 className="text-xs font-bold text-[#3d61ff] uppercase tracking-widest mb-4">
+                Design System
               </h3>
-              <ul className="space-y-2 text-sm text-[#94A3B8]">
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#00E5FF] rounded-full" />
-                  Glassmorphism with backdrop blur effects
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#00E5FF] rounded-full" />
-                  Animated AI orb in sidebar assistant card
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#00E5FF] rounded-full" />
-                  Gradient borders and neon highlights
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#00E5FF] rounded-full" />
-                  Smooth hover animations and transitions
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#00E5FF] rounded-full" />
-                  Large rounded corners (18px+) with layered depth
-                </li>
+              <ul className="space-y-3">
+                {[
+                  'Premium glassmorphism with 30px backdrop blur',
+                  'Gradient borders and animated highlights',
+                  'Layered depth with soft shadows',
+                  'Large 14-16px rounded corners throughout',
+                  'Smooth cubic-bezier transitions and micro-interactions',
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-sm text-[#94a3b8]">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #00d9ff, #3d61ff)' }} />
+                    <span>{item}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
         </div>
 
         {/* Feature Cards */}
-        <div className="glass-card p-6 rounded-2xl border border-[rgba(79,124,255,0.15)]">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-2 h-2 bg-[#4F7CFF] rounded-full animate-pulse" />
-            <h3 className="text-sm font-semibold text-[#F1F5F9]">Sidebar Menu</h3>
+        {[
+          { title: 'Sidebar', desc: 'Dashboard, Connections, Threats, Rules, Decisions, Analytics, Processes, Reports, Settings', icon: '📊' },
+          { title: 'AI Assistant', desc: 'Animated orb, protection indicators, Quick Scan, real-time status updates', icon: '🤖' },
+          { title: 'Premium UI', desc: 'Gradients, glassmorphism, smooth animations, professional typography', icon: '✨' },
+        ].map((item, i) => (
+          <div key={i} className="card-premium" style={{ background: 'linear-gradient(135deg, rgba(61, 97, 255, 0.08) 0%, rgba(0, 217, 255, 0.04) 100%)', borderColor: 'rgba(61, 97, 255, 0.2)' }}>
+            <div className="flex items-start gap-4 mb-4">
+              <div className="text-2xl">{item.icon}</div>
+              <div>
+                <h3 className="text-sm font-bold text-[#f8fafc]">{item.title}</h3>
+              </div>
+            </div>
+            <p className="text-sm text-[#94a3b8] leading-relaxed">{item.desc}</p>
           </div>
-          <p className="text-xs text-[#94A3B8] leading-relaxed">
-            Dashboard, Live Connections, Threat Intelligence, Firewall Rules, AI Decisions, Traffic Analytics, Processes, Reports, and Settings
-          </p>
-        </div>
-
-        <div className="glass-card p-6 rounded-2xl border border-[rgba(79,124,255,0.15)]">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-2 h-2 bg-[#00E5FF] rounded-full animate-pulse" />
-            <h3 className="text-sm font-semibold text-[#F1F5F9]">AI Assistant</h3>
-          </div>
-          <p className="text-xs text-[#94A3B8] leading-relaxed">
-            Bottom sidebar card with animated glowing orb, protection state indicator, and Quick Scan button
-          </p>
-        </div>
-
-        <div className="glass-card p-6 rounded-2xl border border-[rgba(79,124,255,0.15)]">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-2 h-2 bg-[#7C3AED] rounded-full animate-pulse" />
-            <h3 className="text-sm font-semibold text-[#F1F5F9]">Top Navigation</h3>
-          </div>
-          <p className="text-xs text-[#94A3B8] leading-relaxed">
-            System info, search, notifications, theme toggle, and user profile with dropdown menu
-          </p>
-        </div>
+        ))}
       </div>
 
-      {/* Footer Note */}
-      <div className="mt-8 glass-card p-4 rounded-2xl border border-[rgba(79,124,255,0.15)] text-center">
-        <p className="text-xs text-[#94A3B8]">
-          Premium application shell ready for dashboard widgets. Use the sidebar to navigate between sections.
+      {/* Footer Section */}
+      <div className="card-compact text-center mt-12" style={{ background: 'linear-gradient(135deg, rgba(61, 97, 255, 0.05) 0%, rgba(0, 217, 255, 0.03) 100%)', borderColor: 'rgba(148, 163, 184, 0.1)' }}>
+        <p className="text-sm text-[#94a3b8] font-medium">
+          Enterprise-grade dashboard ready for advanced threat monitoring and security operations
         </p>
       </div>
     </div>

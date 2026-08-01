@@ -23,9 +23,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="bg-[#050816]">
-      <body className={`${geistSans.className} bg-[#050816] text-[#F1F5F9] overflow-hidden`}>
-        <div className="flex h-screen bg-[#050816]">
+    <html lang="en" className="bg-[#030712]">
+      <body className={`${geistSans.className} bg-[#030712] text-[#f8fafc] overflow-hidden`} style={{ background: 'linear-gradient(135deg, #030712 0%, #0a0e1a 100%)', backgroundAttachment: 'fixed' }}>
+        <div className="flex h-screen">
           <SidebarShell />
           <div className="flex-1 flex flex-col overflow-hidden">
             <TopNavShell />

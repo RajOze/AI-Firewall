@@ -25,39 +25,62 @@ export function TopNavShell() {
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 h-20 bg-[rgba(11,17,32,0.8)] border-b border-[rgba(79,124,255,0.08)] backdrop-blur-xl flex items-center px-6 gap-4 z-40">
+    <div 
+      className="fixed top-0 left-0 right-0 h-20 flex items-center px-6 gap-6 z-40"
+      style={{
+        background: 'linear-gradient(135deg, rgba(3, 7, 18, 0.7) 0%, rgba(10, 14, 26, 0.5) 100%)',
+        borderBottom: '1px solid rgba(148, 163, 184, 0.08)',
+        backdropFilter: 'blur(30px)',
+        WebkitBackdropFilter: 'blur(30px)',
+      }}
+    >
       {/* Left Section - System Info */}
       <div className="flex items-center gap-8">
-        <div className="hidden sm:flex items-center gap-2">
-          <Monitor className="w-4 h-4 text-[#4F7CFF]" />
-          <span className="text-xs font-mono text-[#F1F5F9]">{systemInfo.hostname}</span>
+        <div className="hidden sm:flex items-center gap-2 group">
+          <Monitor className="w-4 h-4 text-[#3d61ff] group-hover:text-[#00d9ff] transition-colors" />
+          <span className="text-xs font-mono text-[#f8fafc] font-medium">{systemInfo.hostname}</span>
         </div>
-        <div className="hidden md:flex items-center gap-2 text-xs text-[#94A3B8]">
+        <div className="hidden md:flex items-center gap-2 text-xs text-[#94a3b8] font-medium">
           <span>{systemInfo.windowsVersion}</span>
-          <span className="text-[#4F7CFF]">•</span>
+          <span className="text-[#3d61ff] opacity-50">•</span>
           <span>{systemInfo.user}</span>
         </div>
       </div>
 
-      {/* Center - Search */}
+      {/* Center - Premium Search */}
       <div className="flex-1 max-w-2xl">
         <div className="relative group">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#94a3b8] group-focus-within:text-[#3d61ff] transition-colors" />
           <input
             type="text"
             placeholder="Search processes, connections, threats..."
-            className="w-full bg-[rgba(5,8,22,0.6)] border border-[rgba(79,124,255,0.15)] rounded-xl pl-12 pr-4 py-2.5 text-sm text-[#F1F5F9] placeholder-[#94A3B8] focus:outline-none focus:border-[#4F7CFF] focus:shadow-lg focus:shadow-[rgba(79,124,255,0.2)] transition-all duration-200"
+            className="input-field pl-12 pr-4 py-3"
+            style={{
+              background: 'linear-gradient(135deg, rgba(10, 14, 26, 0.4) 0%, rgba(20, 24, 41, 0.2) 100%)',
+              fontSize: '0.875rem',
+            }}
           />
         </div>
       </div>
 
-      {/* Right Section - Actions */}
-      <div className="flex items-center gap-2">
+      {/* Right Section - Premium Actions */}
+      <div className="flex items-center gap-1">
         {/* Notifications */}
-        <button className="relative p-2.5 hover:bg-[rgba(79,124,255,0.1)] rounded-xl transition-all duration-200 group">
-          <Bell className="w-5 h-5 text-[#94A3B8] group-hover:text-[#4F7CFF]" />
+        <button 
+          className="nav-item p-3 relative group transition-all duration-300"
+          style={{
+            color: '#94a3b8',
+          }}
+        >
+          <Bell className="w-5 h-5 group-hover:text-[#3d61ff] transition-colors" />
           {systemInfo.notifications > 0 && (
-            <span className="absolute top-1 right-1 w-5 h-5 bg-gradient-to-r from-[#EF4444] to-[#F59E0B] rounded-full text-white text-xs font-bold flex items-center justify-center">
+            <span 
+              className="absolute top-2 right-2 w-5 h-5 text-white text-xs font-bold flex items-center justify-center rounded-full pulse-glow"
+              style={{
+                background: 'linear-gradient(135deg, #ef4444, #f97316)',
+                boxShadow: '0 0 12px rgba(239, 68, 68, 0.5)',
+              }}
+            >
               {systemInfo.notifications}
             </span>
           )}
@@ -66,41 +89,63 @@ export function TopNavShell() {
         {/* Theme Toggle */}
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="p-2.5 hover:bg-[rgba(79,124,255,0.1)] rounded-xl transition-all duration-200 group"
+          className="nav-item p-3 group transition-all duration-300"
         >
           {theme === 'dark' ? (
-            <Moon className="w-5 h-5 text-[#94A3B8] group-hover:text-[#4F7CFF]" />
+            <Moon className="w-5 h-5 group-hover:text-[#3d61ff] transition-colors" />
           ) : (
-            <Sun className="w-5 h-5 text-[#94A3B8] group-hover:text-[#4F7CFF]" />
+            <Sun className="w-5 h-5 group-hover:text-[#3d61ff] transition-colors" />
           )}
         </button>
 
         {/* User Dropdown */}
-        <div className="relative">
+        <div className="relative ml-2">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2 px-3 py-2 hover:bg-[rgba(79,124,255,0.1)] rounded-xl transition-all duration-200 ml-2"
+            className="flex items-center gap-2.5 px-4 py-2.5 group transition-all duration-300"
+            style={{
+              background: 'rgba(61, 97, 255, 0.08)',
+              border: '1px solid rgba(61, 97, 255, 0.15)',
+              borderRadius: '12px',
+            }}
           >
-            <div className="w-8 h-8 bg-gradient-to-br from-[#4F7CFF] to-[#7C3AED] rounded-lg flex items-center justify-center">
+            <div 
+              className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0 relative overflow-hidden group-hover:shadow-glow transition-all duration-300"
+              style={{
+                background: 'linear-gradient(135deg, #3d61ff 0%, #7c3aed 100%)',
+              }}
+            >
               <User className="w-4 h-4 text-white" />
             </div>
-            <span className="text-xs font-semibold text-[#F1F5F9] hidden sm:block">
+            <span className="text-xs font-bold text-[#f8fafc] hidden sm:block">
               {systemInfo.user}
             </span>
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 glass-card rounded-xl shadow-xl border border-[rgba(79,124,255,0.15)] overflow-hidden">
-              <div className="p-3 border-b border-[rgba(79,124,255,0.08)]">
-                <div className="text-xs text-[#94A3B8]">Logged in as</div>
-                <div className="text-sm font-semibold text-[#F1F5F9]">{systemInfo.user}</div>
+            <div 
+              className="absolute right-0 mt-3 w-56 rounded-[14px] shadow-lg overflow-hidden border border-l border-b border-r border-t animate-fade-in"
+              style={{
+                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(20, 24, 41, 0.6) 100%)',
+                borderColor: 'rgba(148, 163, 184, 0.12)',
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
+                boxShadow: '0 16px 48px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+              }}
+            >
+              <div 
+                className="p-4 border-b"
+                style={{ borderBottomColor: 'rgba(148, 163, 184, 0.08)' }}
+              >
+                <div className="text-xs text-[#94a3b8] font-medium">LOGGED IN AS</div>
+                <div className="text-sm font-bold text-[#f8fafc] mt-1">{systemInfo.user}</div>
               </div>
-              <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#F1F5F9] hover:bg-[rgba(79,124,255,0.1)] transition-colors">
-                <Settings className="w-4 h-4" />
+              <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#f8fafc] hover:bg-[rgba(61,97,255,0.1)] transition-colors font-medium group">
+                <Settings className="w-4 h-4 group-hover:text-[#3d61ff] transition-colors" />
                 Profile Settings
               </button>
-              <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#94A3B8] hover:text-[#EF4444] hover:bg-[rgba(239,68,68,0.1)] transition-colors">
-                <LogOut className="w-4 h-4" />
+              <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#94a3b8] hover:text-[#ef4444] hover:bg-[rgba(239,68,68,0.1)] transition-colors font-medium group">
+                <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
                 Logout
               </button>
             </div>
