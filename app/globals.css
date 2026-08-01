@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    @apply bg-background text-foreground;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/[0.05] backdrop-blur-md border border-white/[0.1];
+  }
+
+  .card-base {
+    @apply bg-card border border-border rounded-lg p-4;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-allowed {
+    @apply bg-success/10 text-success;
+  }
+
+  .status-monitoring {
+    @apply bg-warning/10 text-warning;
+  }
+
+  .status-blocked {
+    @apply bg-critical/10 text-critical;
+  }
+
+  .risk-low {
+    @apply text-success;
+  }
+
+  .risk-medium {
+    @apply text-warning;
+  }
+
+  .risk-high {
+    @apply text-critical;
+  }
+
+  .risk-critical {
+    @apply text-critical;
+  }
+}
+
+* {
+  @apply scroll-smooth;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-card-dark;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full hover:bg-text-secondary;
+}
