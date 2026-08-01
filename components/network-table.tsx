@@ -63,13 +63,13 @@ const networkData = [
 function getRiskColor(level: string) {
   switch (level) {
     case "low":
-      return "text-success";
+      return "text-[#22c55e]";
     case "medium":
-      return "text-warning";
+      return "text-[#f59e0b]";
     case "high":
-      return "text-critical";
+      return "text-[#ef4444]";
     default:
-      return "text-text-secondary";
+      return "text-[#94a3b8]";
   }
 }
 
@@ -90,8 +90,8 @@ export function NetworkTable() {
   return (
     <div className="card-base">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold">Live Network Panel</h3>
-        <p className="text-xs text-text-secondary mt-1">
+        <h3 className="text-sm font-semibold text-[#f1f5f9]">Live Network Panel</h3>
+        <p className="text-xs text-[#94a3b8] mt-1">
           Active network connections and traffic
         </p>
       </div>
@@ -100,49 +100,49 @@ export function NetworkTable() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+              <tr className="border-b border-[rgba(79,124,255,0.1)]">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Process
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   PID
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Local IP
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Remote IP
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Port
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Protocol
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Country
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Risk
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Status
                 </th>
               </tr>
             </thead>
             <tbody>
               {networkData.map((row, idx) => (
-                <tr key={idx} className="border-b border-border hover:bg-card-dark">
-                  <td className="py-3 px-4 font-mono text-xs">{row.process}</td>
-                  <td className="py-3 px-4 text-xs text-text-secondary">
+                <tr key={idx} className="border-b border-[rgba(79,124,255,0.05)] hover:bg-[rgba(79,124,255,0.08)] transition-colors duration-150">
+                  <td className="py-3 px-4 font-mono text-xs text-[#f1f5f9]">{row.process}</td>
+                  <td className="py-3 px-4 text-xs text-[#94a3b8]">
                     {row.pid}
                   </td>
-                  <td className="py-3 px-4 text-xs font-mono">{row.localIp}</td>
-                  <td className="py-3 px-4 text-xs font-mono">{row.remoteIp}</td>
-                  <td className="py-3 px-4 text-xs">{row.port}</td>
-                  <td className="py-3 px-4 text-xs font-medium">{row.protocol}</td>
-                  <td className="py-3 px-4 text-xs">{row.country}</td>
-                  <td className={`py-3 px-4 text-xs font-medium ${getRiskColor(row.riskLevel)} capitalize`}>
+                  <td className="py-3 px-4 text-xs font-mono text-[#f1f5f9]">{row.localIp}</td>
+                  <td className="py-3 px-4 text-xs font-mono text-[#f1f5f9]">{row.remoteIp}</td>
+                  <td className="py-3 px-4 text-xs text-[#f1f5f9]">{row.port}</td>
+                  <td className="py-3 px-4 text-xs font-medium text-[#f1f5f9]">{row.protocol}</td>
+                  <td className="py-3 px-4 text-xs text-[#f1f5f9]">{row.country}</td>
+                  <td className={`py-3 px-4 text-xs font-semibold ${getRiskColor(row.riskLevel)} capitalize`}>
                     {row.riskLevel}
                   </td>
                   <td className="py-3 px-4">

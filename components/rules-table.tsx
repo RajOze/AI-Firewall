@@ -62,13 +62,13 @@ const rulesData = [
 function getActionColor(action: string) {
   switch (action) {
     case "Allow":
-      return "bg-success/10 text-success";
+      return "bg-[rgba(34,197,94,0.15)] text-[#22c55e]";
     case "Block":
-      return "bg-critical/10 text-critical";
+      return "bg-[rgba(239,68,68,0.15)] text-[#ef4444]";
     case "Monitor":
-      return "bg-warning/10 text-warning";
+      return "bg-[rgba(245,158,11,0.15)] text-[#f59e0b]";
     default:
-      return "bg-border text-text-secondary";
+      return "bg-[rgba(79,124,255,0.1)] text-[#94a3b8]";
   }
 }
 
@@ -76,8 +76,8 @@ export function RulesTable() {
   return (
     <div className="card-base">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold">Firewall Rules</h3>
-        <p className="text-xs text-text-secondary mt-1">
+        <h3 className="text-sm font-semibold text-[#f1f5f9]">Firewall Rules</h3>
+        <p className="text-xs text-[#94a3b8] mt-1">
           Active firewall rules and policies
         </p>
       </div>
@@ -86,40 +86,40 @@ export function RulesTable() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+              <tr className="border-b border-[rgba(79,124,255,0.1)]">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Rule
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Direction
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Protocol
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Port
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Application
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Action
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                <th className="text-left py-3 px-4 font-semibold text-[#94a3b8] uppercase text-xs tracking-wider">
                   Status
                 </th>
               </tr>
             </thead>
             <tbody>
               {rulesData.map((row, idx) => (
-                <tr key={idx} className="border-b border-border hover:bg-card-dark">
-                  <td className="py-3 px-4 text-xs">{row.rule}</td>
-                  <td className="py-3 px-4 text-xs text-text-secondary">
+                <tr key={idx} className="border-b border-[rgba(79,124,255,0.05)] hover:bg-[rgba(79,124,255,0.08)] transition-colors duration-150">
+                  <td className="py-3 px-4 text-xs text-[#f1f5f9] font-medium">{row.rule}</td>
+                  <td className="py-3 px-4 text-xs text-[#94a3b8]">
                     {row.direction}
                   </td>
-                  <td className="py-3 px-4 text-xs font-medium">{row.protocol}</td>
-                  <td className="py-3 px-4 text-xs font-mono">{row.port}</td>
-                  <td className="py-3 px-4 text-xs">{row.application}</td>
+                  <td className="py-3 px-4 text-xs font-semibold text-[#f1f5f9]">{row.protocol}</td>
+                  <td className="py-3 px-4 text-xs font-mono text-[#f1f5f9]">{row.port}</td>
+                  <td className="py-3 px-4 text-xs text-[#f1f5f9]">{row.application}</td>
                   <td className="py-3 px-4">
                     <span className={`status-badge ${getActionColor(row.action)}`}>
                       {row.action}
@@ -127,8 +127,8 @@ export function RulesTable() {
                   </td>
                   <td className="py-3 px-4">
                     <span className="inline-flex items-center gap-1.5">
-                      <div className="w-2 h-2 bg-success rounded-full"></div>
-                      <span className="text-xs text-success">{row.status}</span>
+                      <div className="w-2 h-2 bg-[#22c55e] rounded-full animate-pulse"></div>
+                      <span className="text-xs text-[#22c55e] font-semibold">{row.status}</span>
                     </span>
                   </td>
                 </tr>

@@ -24,19 +24,19 @@ export function StatusBar() {
   ];
 
   return (
-    <div className="h-10 bg-card border-t border-border px-4 flex items-center justify-between text-xs text-text-secondary">
+    <div className="h-10 bg-[rgba(11,17,32,0.8)] border-t border-[rgba(79,124,255,0.1)] px-4 flex items-center justify-between text-xs text-[#94a3b8] backdrop-blur-xl">
       <div className="flex items-center gap-6">
         {statusItems.map((item, idx) => (
           <div key={idx} className="flex items-center gap-2">
-            <span className="opacity-70">{item.label}:</span>
-            <span className="text-foreground font-medium">{item.value}</span>
+            <span className="opacity-60">{item.label}:</span>
+            <span className="text-[#f1f5f9] font-semibold">{item.value}</span>
           </div>
         ))}
       </div>
 
       <div className="flex items-center gap-2">
-        <Clock className="w-3.5 h-3.5" />
-        <span className="font-mono">{time}</span>
+        <Clock className="w-3.5 h-3.5 text-[#4f7cff]" />
+        <span className="font-mono text-[#4f7cff] font-medium">{time}</span>
       </div>
     </div>
   );

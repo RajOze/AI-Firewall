@@ -56,15 +56,15 @@ const events = [
 function getEventColor(type: string) {
   switch (type) {
     case "threat":
-      return "text-critical";
+      return "text-[#ef4444]";
     case "warning":
-      return "text-warning";
+      return "text-[#f59e0b]";
     case "update":
-      return "text-primary";
+      return "text-[#4f7cff]";
     case "process":
-      return "text-success";
+      return "text-[#22c55e]";
     default:
-      return "text-text-secondary";
+      return "text-[#94a3b8]";
   }
 }
 
@@ -72,19 +72,19 @@ export function EventLog() {
   return (
     <div className="card-base">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold">Recent Events</h3>
-        <p className="text-xs text-text-secondary mt-1">
+        <h3 className="text-sm font-semibold text-[#f1f5f9]">Recent Events</h3>
+        <p className="text-xs text-[#94a3b8] mt-1">
           System and security event log
         </p>
       </div>
 
       <div className="space-y-2 max-h-64 overflow-y-auto">
         {events.map((event, idx) => (
-          <div key={idx} className="flex items-start gap-3 p-2 hover:bg-card-dark rounded transition-colors">
+          <div key={idx} className="flex items-start gap-3 p-3 hover:bg-[rgba(79,124,255,0.08)] rounded-lg transition-all duration-150">
             <event.icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${getEventColor(event.type)}`} />
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-foreground">{event.text}</p>
-              <span className="text-xs text-text-secondary">{event.time}</span>
+              <p className="text-xs text-[#f1f5f9] font-medium">{event.text}</p>
+              <span className="text-xs text-[#94a3b8]">{event.time}</span>
             </div>
           </div>
         ))}

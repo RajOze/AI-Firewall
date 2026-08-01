@@ -42,115 +42,115 @@ const blockedData = [
   { time: "24:00", value: 0 },
 ];
 
+const tooltipStyle = {
+  backgroundColor: "rgba(5, 8, 22, 0.9)",
+  border: "1px solid rgba(79, 124, 255, 0.3)",
+  borderRadius: "12px",
+  boxShadow: "0 0 20px rgba(79, 124, 255, 0.2)",
+};
+
+const gridColor = "rgba(79, 124, 255, 0.05)";
+const axisColor = "#94a3b8";
+
 export function TrafficCharts() {
   return (
     <div className="grid grid-cols-2 gap-4 mb-6">
       {/* Network Upload */}
-      <div className="card-base">
-        <h3 className="text-sm font-semibold mb-4">Network Upload</h3>
+      <div className="card-base group">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-[#f1f5f9]">Network Upload</h3>
+          <div className="w-2 h-2 bg-[#4f7cff] rounded-full group-hover:animate-pulse"></div>
+        </div>
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={uploadData}>
             <defs>
               <linearGradient id="colorUpload" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                <stop offset="5%" stopColor="#4f7cff" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#4f7cff" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-            <XAxis dataKey="time" tick={{ fontSize: 12 }} stroke="#9ca3af" />
-            <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#1a1a1a",
-                border: "1px solid #2a2a2a",
-                borderRadius: "8px",
-              }}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+            <XAxis dataKey="time" tick={{ fontSize: 12 }} stroke={axisColor} />
+            <YAxis tick={{ fontSize: 12 }} stroke={axisColor} />
+            <Tooltip contentStyle={tooltipStyle} />
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#3b82f6"
+              stroke="#4f7cff"
               fillOpacity={1}
               fill="url(#colorUpload)"
+              strokeWidth={2}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
       {/* Network Download */}
-      <div className="card-base">
-        <h3 className="text-sm font-semibold mb-4">Network Download</h3>
+      <div className="card-base group">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-[#f1f5f9]">Network Download</h3>
+          <div className="w-2 h-2 bg-[#22c55e] rounded-full group-hover:animate-pulse"></div>
+        </div>
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={downloadData}>
             <defs>
               <linearGradient id="colorDownload" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                <stop offset="5%" stopColor="#22c55e" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-            <XAxis dataKey="time" tick={{ fontSize: 12 }} stroke="#9ca3af" />
-            <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#1a1a1a",
-                border: "1px solid #2a2a2a",
-                borderRadius: "8px",
-              }}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+            <XAxis dataKey="time" tick={{ fontSize: 12 }} stroke={axisColor} />
+            <YAxis tick={{ fontSize: 12 }} stroke={axisColor} />
+            <Tooltip contentStyle={tooltipStyle} />
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#10b981"
+              stroke="#22c55e"
               fillOpacity={1}
               fill="url(#colorDownload)"
+              strokeWidth={2}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
       {/* Connection Count */}
-      <div className="card-base">
-        <h3 className="text-sm font-semibold mb-4">Connection Count</h3>
+      <div className="card-base group">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-[#f1f5f9]">Connection Count</h3>
+          <div className="w-2 h-2 bg-[#f59e0b] rounded-full group-hover:animate-pulse"></div>
+        </div>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={connectionData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-            <XAxis dataKey="time" tick={{ fontSize: 12 }} stroke="#9ca3af" />
-            <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#1a1a1a",
-                border: "1px solid #2a2a2a",
-                borderRadius: "8px",
-              }}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+            <XAxis dataKey="time" tick={{ fontSize: 12 }} stroke={axisColor} />
+            <YAxis tick={{ fontSize: 12 }} stroke={axisColor} />
+            <Tooltip contentStyle={tooltipStyle} />
             <Line
               type="monotone"
               dataKey="value"
               stroke="#f59e0b"
               dot={false}
-              strokeWidth={2}
+              strokeWidth={2.5}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
       {/* Blocked Events */}
-      <div className="card-base">
-        <h3 className="text-sm font-semibold mb-4">Blocked Events</h3>
+      <div className="card-base group">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-[#f1f5f9]">Blocked Events</h3>
+          <div className="w-2 h-2 bg-[#ef4444] rounded-full group-hover:animate-pulse"></div>
+        </div>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={blockedData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-            <XAxis dataKey="time" tick={{ fontSize: 12 }} stroke="#9ca3af" />
-            <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#1a1a1a",
-                border: "1px solid #2a2a2a",
-                borderRadius: "8px",
-              }}
-            />
-            <Bar dataKey="value" fill="#ef4444" />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+            <XAxis dataKey="time" tick={{ fontSize: 12 }} stroke={axisColor} />
+            <YAxis tick={{ fontSize: 12 }} stroke={axisColor} />
+            <Tooltip contentStyle={tooltipStyle} />
+            <Bar dataKey="value" fill="#ef4444" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
