@@ -1,13 +1,28 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 # pyrefly: ignore [missing-import]
 from app.api.analyze import router as analyze_router
+from app.api.events import router as events_router
 from app.api.firewall import router as firewall_router
+from app.dependencies.telemetry import get_telemetry_service
 
 # Load environment variables
 load_dotenv()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application background workers lifecycle."""
+    telemetry_service = get_telemetry_service()
+    await telemetry_service.start()
+    try:
+        yield
+    finally:
+        await telemetry_service.stop()
+
 
 app = FastAPI(
     title="AI Firewall",
@@ -15,6 +30,7 @@ app = FastAPI(
     version="0.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # Configure explicit CORS origins for development frontend
@@ -34,6 +50,8 @@ app.add_middleware(
 # Register API routes
 app.include_router(analyze_router)
 app.include_router(firewall_router)
+app.include_router(events_router)
+
 
 
 @app.get("/")
