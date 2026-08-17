@@ -66,3 +66,8 @@ frontend/build/
 .cache/
 temp/
 tmp/
+# Temporary backups & benchmarks
+*.backup
+*.stitch-baseline
+*.diff
+scratch/
