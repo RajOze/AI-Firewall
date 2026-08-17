@@ -36,6 +36,10 @@ class MutationFailingProvider(FirewallProvider):
     def is_administrator(self) -> bool:
         return True
 
+    def list_rules(self) -> list[dict]:
+        return []
+
+
 
 class QueryFailingProvider(MutationFailingProvider):
     """Fake FirewallProvider whose rule_exists raises a sensitive internal error."""

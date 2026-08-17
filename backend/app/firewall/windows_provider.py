@@ -1,4 +1,4 @@
-"""Windows Firewall provider implementation for AI Firewall."""
+﻿"""Windows Firewall provider implementation for AI Firewall."""
 
 import json
 import subprocess
@@ -261,6 +261,56 @@ class WindowsFirewallProvider(FirewallProvider):
             raise WindowsFirewallProviderError(
                 f"Unexpected exit code {result.returncode} checking firewall rule '{name_key}'{error_details}"
             )
+
+
+    def list_rules(self) -> list[dict]:
+        """Return Windows Firewall rules in read-only mode."""
+        script = r"""
+$rules = @(Get-NetFirewallRule -ErrorAction Stop |
+    Select-Object Name, DisplayName, Enabled, Direction, Action, Profile)
+
+if ($rules.Count -eq 0) {
+    Write-Output "[]"
+} else {
+    $rules | ConvertTo-Json -Compress
+}
+"""
+
+        result = self._run_powershell(script)
+
+        if result.returncode != 0:
+            stderr = result.stderr.strip()
+            raise WindowsFirewallProviderError(
+                f"Failed to list Windows Firewall rules: {stderr}"
+            )
+
+        raw = result.stdout.strip()
+
+        if not raw:
+            return []
+
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise WindowsFirewallProviderError(
+                "Failed to parse Windows Firewall rules output."
+            ) from exc
+
+        if isinstance(data, dict):
+            data = [data]
+
+        return [
+            {
+                "name": str(item.get("Name", "")),
+                "display_name": str(item.get("DisplayName", "")),
+                "enabled": bool(item.get("Enabled", False)),
+                "direction": str(item.get("Direction", "")),
+                "action": str(item.get("Action", "")),
+                "profile": str(item.get("Profile", "")),
+            }
+            for item in data
+            if isinstance(item, dict)
+        ]
 
     def is_administrator(self) -> bool:
         """Check if the current process is running with administrator privileges.

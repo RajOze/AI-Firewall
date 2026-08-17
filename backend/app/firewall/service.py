@@ -133,6 +133,9 @@ class FirewallService:
             "rule_exists target must be a FirewallRuleIdentity or string."
         )
 
+    def list_rules(self) -> list[dict]:
+        """Return current firewall rules through the configured provider."""
+        return self._provider.list_rules()
     @contextmanager
     def managed_rule(self, rule: FirewallRule):
         """Context manager guaranteeing creation, verification, and teardown cleanup after successful addition."""
@@ -146,3 +149,4 @@ class FirewallService:
                 raise FirewallCleanupError(
                     f"Failed to cleanup firewall rule '{identity.name}': {cleanup_exc}"
                 ) from cleanup_exc
+

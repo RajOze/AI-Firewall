@@ -72,6 +72,10 @@ class FakeFirewallProvider(FirewallProvider):
     def is_administrator(self) -> bool:
         return self.is_admin_result
 
+    def list_rules(self) -> list[dict]:
+        return []
+
+
 
 
 def test_service_rejects_non_provider() -> None:

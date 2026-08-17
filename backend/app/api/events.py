@@ -1,10 +1,10 @@
-"""API routes for telemetry events and monitoring status."""
+"""API routes for telemetry events, behavioral baselines, and monitoring status."""
 
 from typing import Any
 from fastapi import APIRouter, Depends, Query, status
 
 from app.dependencies.telemetry import get_telemetry_service
-from app.schemas.events import EventType, SecurityEvent
+from app.schemas.events import EventType
 from app.telemetry.service import TelemetryService
 
 router = APIRouter(
@@ -43,3 +43,15 @@ def get_telemetry_stats(
 ) -> dict[str, Any]:
     """Return telemetry repository and monitoring status statistics."""
     return telemetry_service.get_stats()
+
+
+@router.get(
+    "/baseline",
+    response_model=dict[str, Any],
+    status_code=status.HTTP_200_OK,
+)
+def get_behavioral_baseline_summary(
+    telemetry_service: TelemetryService = Depends(get_telemetry_service),
+) -> dict[str, Any]:
+    """Return Phase 2 Behavioral Baseline memory summary."""
+    return telemetry_service.get_baseline_summary()

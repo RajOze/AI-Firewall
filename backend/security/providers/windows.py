@@ -1,5 +1,6 @@
 """Windows-specific process inspection provider using psutil and Windows APIs."""
 
+import ctypes
 import logging
 import sys
 
@@ -10,6 +11,81 @@ from backend.security.hashing import calculate_sha256
 from backend.security.models import ProcessInfo
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_file_version_publisher(exe_path: str) -> str | None:
+    """Extract software publisher/company name from Windows PE version resource."""
+    if sys.platform != "win32":
+        return None
+    try:
+        size = ctypes.windll.version.GetFileVersionInfoSizeW(exe_path, None)
+        if not size:
+            return None
+
+        res = ctypes.create_string_buffer(size)
+        if not ctypes.windll.version.GetFileVersionInfoW(exe_path, 0, size, res):
+            return None
+
+        # Query translation table
+        ltrans = ctypes.c_void_p()
+        ltrans_len = ctypes.c_uint()
+        if (
+            ctypes.windll.version.VerQueryValueW(
+                res, "\\VarFileInfo\\Translation", ctypes.byref(ltrans), ctypes.byref(ltrans_len)
+            )
+            and ltrans_len.value
+        ):
+            lang_code_ptr = ctypes.cast(ltrans, ctypes.POINTER(ctypes.c_ushort))
+            lang_id = lang_code_ptr[0]
+            code_page = lang_code_ptr[1]
+            sub_block = f"\\StringFileInfo\\{lang_id:04x}{code_page:04x}\\CompanyName"
+
+            val = ctypes.c_wchar_p()
+            val_len = ctypes.c_uint()
+            if (
+                ctypes.windll.version.VerQueryValueW(
+                    res, sub_block, ctypes.byref(val), ctypes.byref(val_len)
+                )
+                and val.value
+            ):
+                return val.value.strip()
+
+        # Fallback to US English Unicode table
+        val = ctypes.c_wchar_p()
+        val_len = ctypes.c_uint()
+        if (
+            ctypes.windll.version.VerQueryValueW(
+                res, "\\StringFileInfo\\040904b0\\CompanyName", ctypes.byref(val), ctypes.byref(val_len)
+            )
+            and val.value
+        ):
+            return val.value.strip()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Could not read FileVersionInfo for %s: %s", exe_path, exc)
+
+    return None
+
+
+def _check_is_signed(exe_path: str) -> bool | None:
+    """Check if Windows PE executable binary contains a digital security certificate header."""
+    if sys.platform != "win32":
+        return None
+    try:
+        with open(exe_path, "rb") as f:
+            header = f.read(4096)
+            if len(header) > 0x3C:
+                pe_offset = int.from_bytes(header[0x3C:0x40], "little")
+                if len(header) >= pe_offset + 0xB0:
+                    sec_dir_size = int.from_bytes(
+                        header[pe_offset + 0x9C : pe_offset + 0xA0], "little"
+                    )
+                    sec_dir_size_64 = int.from_bytes(
+                        header[pe_offset + 0xAC : pe_offset + 0xB0], "little"
+                    )
+                    return bool(sec_dir_size > 0 or sec_dir_size_64 > 0)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Could not check digital signature for %s: %s", exe_path, exc)
+    return None
 
 
 class WindowsProcessProvider:
@@ -103,6 +179,8 @@ class WindowsProcessProvider:
         memory_vms: int | None = None
         sha256: str | None = None
         is_elevated: bool | None = None
+        publisher: str | None = None
+        is_signed: bool | None = None
 
         # Fetch attributes individually to handle partial AccessDenied gracefully
         try:
@@ -179,6 +257,9 @@ class WindowsProcessProvider:
                 if sha256:
                     self.cache.set_hash(exe_path, sha256)
 
+            publisher = _extract_file_version_publisher(exe_path)
+            is_signed = _check_is_signed(exe_path)
+
         # Elevation check
         is_elevated = self._check_is_elevated(proc)
 
@@ -200,6 +281,8 @@ class WindowsProcessProvider:
             memory_rss=memory_rss,
             memory_vms=memory_vms,
             is_elevated=is_elevated,
+            publisher=publisher,
+            is_signed=is_signed,
             access_denied=access_denied,
             error_message=error_message,
         )

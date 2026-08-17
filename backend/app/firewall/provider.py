@@ -24,5 +24,9 @@ class FirewallProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def list_rules(self) -> list[dict]:
+        raise NotImplementedError
+    @abstractmethod
     def is_administrator(self) -> bool:
         raise NotImplementedError
+
