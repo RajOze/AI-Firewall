@@ -1,73 +1,13 @@
-# =========================
-# Python
-# =========================
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual Environments
-.venv/
-venv/
-env/
-ENV/
-
-# Environment Variables
-.env
-.env.*
-!.env.example
-
-# Logs
-*.log
-logs/
-
-# Testing
-.pytest_cache/
-.coverage
-coverage.xml
-htmlcov/
-
-# Type Checkers
-.mypy_cache/
-.pyre/
-.ruff_cache/
-
-# Build
-build/
-dist/
-*.egg-info/
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# =========================
-# Node / React
-# =========================
+﻿.venv/
+backend/.venv314/
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-frontend/dist/
-frontend/build/
-
-# =========================
-# Docker
-# =========================
-*.pid
-
-# =========================
-# Misc
-# =========================
-.cache/
-temp/
-tmp/
-# Temporary backups & benchmarks
+dist/
+build/
 *.backup
 *.stitch-baseline
 *.diff
 scratch/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.pyc

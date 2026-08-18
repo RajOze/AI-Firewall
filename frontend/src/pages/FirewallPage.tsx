@@ -1,275 +1,202 @@
-﻿import { useEffect, useState } from "react";
-import {
-  checkFirewallRule,
-  fetchFirewallRules,
-} from "../services/api";
-import type {
-  FirewallRuleResponse,
-  FirewallRuleStatusResponse,
-} from "../services/api";
+import { useState, useEffect } from 'react';
+import type { FirewallRuleSummary } from '../services/api';
+import { api } from '../services/api';
+import { Shield, Search, RefreshCw, AlertCircle, CheckCircle2, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 
 export default function FirewallPage() {
-  const [rules, setRules] = useState<FirewallRuleResponse[]>([]);
-  const [rulesLoading, setRulesLoading] = useState(true);
-  const [rulesError, setRulesError] = useState<string | null>(null);
+  const [rules, setRules] = useState<FirewallRuleSummary[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filterAction, setFilterAction] = useState<'all' | 'block' | 'allow'>('all');
+  const [filterDirection, setFilterDirection] = useState<'all' | 'inbound' | 'outbound'>('all');
+  const [error, setError] = useState<string | null>(null);
 
-  const [queryRuleName, setQueryRuleName] = useState("");
-  const [queryResult, setQueryResult] =
-    useState<FirewallRuleStatusResponse | null>(null);
-  const [queryError, setQueryError] = useState<string | null>(null);
-  const [queryLoading, setQueryLoading] = useState(false);
-
-  useEffect(() => {
-    const loadFirewallRules = async () => {
-      setRulesLoading(true);
-      setRulesError(null);
-
-      try {
-        const data = await fetchFirewallRules();
-
-        setRules(data);
-
-        if (data.length > 0) {
-          setQueryRuleName(data[0].name);
-        }
-      } catch (err: unknown) {
-        setRulesError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load Windows Firewall rules",
-        );
-      } finally {
-        setRulesLoading(false);
-      }
-    };
-
-    loadFirewallRules();
-  }, []);
-
-  const handleInspectRule = async () => {
-    if (!queryRuleName.trim()) return;
-
-    setQueryLoading(true);
-    setQueryError(null);
-    setQueryResult(null);
-
+  const fetchRules = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const result = await checkFirewallRule(queryRuleName);
-      setQueryResult(result);
-    } catch (err: unknown) {
-      setQueryError(
-        err instanceof Error
-          ? err.message
-          : "Failed to inspect firewall rule",
-      );
+      const data = await api.getFirewallRules(200);
+      setRules(data.rules || []);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load firewall rules');
     } finally {
-      setQueryLoading(false);
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchRules();
+  }, []);
+
+  const filteredRules = rules.filter((r) => {
+    const nameMatch = (r.name || '').toLowerCase().includes(search.toLowerCase()) || 
+                      (r.display_name || '').toLowerCase().includes(search.toLowerCase());
+    const actionMatch = filterAction === 'all' || (r.action || '').toLowerCase() === filterAction;
+    const directionMatch = filterDirection === 'all' || (r.direction || '').toLowerCase() === filterDirection;
+    return nameMatch && actionMatch && directionMatch;
+  });
+
   return (
-    <div className="flex flex-col w-full gap-gutter">
-      <div className="bg-surface-container p-lg rounded border border-outline-variant/30 flex items-center justify-between">
-        <div>
-          <h1 className="font-headline-lg text-on-surface">
-            Firewall Management & Rule Inspector
-          </h1>
-
-          <p className="font-body-sm text-outline mt-1">
-            Inspect and manage the live Windows Firewall configuration.
-          </p>
+    <div className="flex flex-col w-full gap-6 p-6 text-slate-100 font-mono">
+      {/* Top Banner */}
+      <div className="bg-[#111625] p-4 rounded-xl border border-slate-800 flex items-center justify-between shadow-lg">
+        <div className="flex items-center gap-3">
+          <Shield className="w-6 h-6 text-blue-400" />
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-white">Windows Firewall Management</h1>
+            <p className="text-xs text-slate-400">Real-time NetSecurity rule inventory & policy synchronization</p>
+          </div>
         </div>
-
-        <button className="px-md py-sm bg-primary text-on-primary font-body-sm rounded hover:bg-primary-container transition-colors flex items-center gap-xs">
-          <span className="material-symbols-outlined text-[18px]">
-            add
-          </span>
-          Create New Rule
+        <button 
+          onClick={fetchRules}
+          disabled={loading}
+          className="px-3.5 py-1.5 bg-[#161c2e] hover:bg-slate-800 rounded-lg border border-slate-700 text-xs font-semibold flex items-center gap-2 transition-colors disabled:opacity-50 text-slate-200"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Sync Rules
         </button>
       </div>
 
-      <div className="bg-surface-container p-lg rounded border border-outline-variant/30 flex flex-col gap-md">
-        <div className="flex items-center gap-sm">
-          <span className="material-symbols-outlined text-primary text-[24px]">
-            verified_user
-          </span>
-
-          <div>
-            <h2 className="font-headline-sm text-on-surface">
-              Live OS Rule Inspector (FastAPI Backend)
-            </h2>
-
-            <p className="font-body-sm text-outline text-[12px]">
-              Queries the local Windows Firewall service to verify rule
-              existence.
-            </p>
-          </div>
+      {error && (
+        <div className="p-4 bg-red-950/50 border border-red-800/60 rounded-xl text-red-400 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {error}
         </div>
+      )}
 
-        <div className="flex items-center gap-md max-w-xl">
-          <input
+      {/* Filter & Search Bar */}
+      <div className="bg-[#111625] p-4 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input 
             type="text"
-            value={queryRuleName}
-            onChange={(e) => setQueryRuleName(e.target.value)}
-            placeholder="Enter an actual Windows Firewall rule name"
-            className="flex-1 bg-surface-container-low border border-outline-variant rounded px-md py-sm text-body-sm font-code-sm text-on-surface focus:outline-none focus:border-primary"
+            placeholder="Search rules by name or display tag..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-[#161c2e] border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
           />
-
-          <button
-            onClick={handleInspectRule}
-            disabled={queryLoading || !queryRuleName.trim()}
-            className="px-lg py-sm bg-secondary text-on-secondary font-body-sm font-medium rounded hover:bg-secondary-container transition-colors disabled:opacity-50"
-          >
-            {queryLoading ? "Checking..." : "Inspect Rule"}
-          </button>
         </div>
 
-        {queryResult && (
-          <div className="p-md bg-secondary/10 border border-secondary/20 rounded font-code-sm text-[13px] text-secondary flex items-center gap-md">
-            <span className="material-symbols-outlined text-[20px]">
-              check_circle
-            </span>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-slate-400">Action:</span>
+          {(['all', 'block', 'allow'] as const).map((act) => (
+            <button
+              key={act}
+              onClick={() => setFilterAction(act)}
+              className={`px-2.5 py-1 rounded uppercase text-[10px] font-bold transition-colors ${
+                filterAction === act 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-[#161c2e] text-slate-400 hover:text-white'
+              }`}
+            >
+              {act}
+            </button>
+          ))}
+        </div>
 
-            <span>
-              Rule <strong>"{queryResult.rule_name}"</strong>:{" "}
-              {queryResult.exists
-                ? "Active & Configured in OS"
-                : "Not Found"}
-            </span>
-          </div>
-        )}
-
-        {queryError && (
-          <div className="p-md bg-error/10 border border-error/20 rounded font-code-sm text-[13px] text-error flex items-center gap-md">
-            <span className="material-symbols-outlined text-[20px]">
-              error
-            </span>
-
-            <span>{queryError}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-slate-400">Direction:</span>
+          {(['all', 'inbound', 'outbound'] as const).map((dir) => (
+            <button
+              key={dir}
+              onClick={() => setFilterDirection(dir)}
+              className={`px-2.5 py-1 rounded uppercase text-[10px] font-bold transition-colors ${
+                filterDirection === dir 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-[#161c2e] text-slate-400 hover:text-white'
+              }`}
+            >
+              {dir}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="bg-surface-container rounded border border-outline-variant/30 overflow-hidden">
-        <div className="p-lg border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
-          <span className="font-label-caps text-on-surface uppercase tracking-widest">
-            Windows Firewall Rules ({rules.length})
-          </span>
-
-          <span className="font-body-sm text-outline">
-            Source:{" "}
-            <strong className="text-secondary">LIVE WINDOWS</strong>
+      {/* Rules Table */}
+      <div className="bg-[#111625] p-5 rounded-xl border border-slate-800 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">Host Firewall Rule Inventory</h2>
+          <span className="text-xs text-slate-400">
+            Showing {filteredRules.length} of {rules.length} loaded rules
           </span>
         </div>
 
-        {rulesLoading && (
-          <div className="p-xl text-center text-outline">
-            Loading Windows Firewall rules...
-          </div>
-        )}
-
-        {rulesError && (
-          <div className="m-lg p-md bg-error/10 border border-error/20 rounded text-error">
-            <strong>Unable to load firewall rules:</strong>{" "}
-            {rulesError}
-          </div>
-        )}
-
-        {!rulesLoading && !rulesError && rules.length === 0 && (
-          <div className="p-xl text-center text-outline">
-            No Windows Firewall rules were returned.
-          </div>
-        )}
-
-        {!rulesLoading && !rulesError && rules.length > 0 && (
-          <div className="overflow-x-auto max-h-[650px] overflow-y-auto">
-            <table className="w-full text-left">
-              <thead className="sticky top-0 z-10 bg-surface-container-highest">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#161c2e] border-b border-slate-800 text-slate-400">
+              <tr>
+                <th className="py-2.5 px-3">Rule Name / Display Tag</th>
+                <th className="py-2.5 px-3">Direction</th>
+                <th className="py-2.5 px-3">Action</th>
+                <th className="py-2.5 px-3">Target Address</th>
+                <th className="py-2.5 px-3">Target Port</th>
+                <th className="py-2.5 px-3 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {filteredRules.length === 0 ? (
                 <tr>
-                  <th className="p-md font-label-caps text-outline">
-                    Rule Name
-                  </th>
-                  <th className="p-md font-label-caps text-outline">
-                    Action
-                  </th>
-                  <th className="p-md font-label-caps text-outline">
-                    Direction
-                  </th>
-                  <th className="p-md font-label-caps text-outline">
-                    Profile
-                  </th>
-                  <th className="p-md font-label-caps text-outline text-right">
-                    Status
-                  </th>
+                  <td colSpan={6} className="text-center py-10 text-slate-500">
+                    {loading ? 'Querying Windows NetSecurity Provider...' : 'No matching rules found.'}
+                  </td>
                 </tr>
-              </thead>
-
-              <tbody className="font-code-sm">
-                {rules.map((rule) => {
-                  const action = rule.action.toUpperCase();
+              ) : (
+                filteredRules.map((rule, idx) => {
+                  const isSentinelRule = (rule.name || '').startsWith('AI-Firewall');
+                  const isBlock = (rule.action || '').toLowerCase() === 'block';
 
                   return (
-                    <tr
-                      key={rule.name}
-                      className="border-b border-outline-variant/30 hover:bg-surface-container-high transition-colors"
-                    >
-                      <td className="p-md text-on-surface font-medium">
-                        <div className="flex flex-col">
-                          <span>{rule.display_name}</span>
-                          <span className="text-[11px] text-outline">
-                            {rule.name}
-                          </span>
+                    <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-2.5 px-3">
+                        <div className="font-semibold text-slate-200 flex items-center gap-1.5">
+                          {isSentinelRule && (
+                            <span className="px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 text-[9px] uppercase font-bold">
+                              Sentinel
+                            </span>
+                          )}
+                          <span className="truncate max-w-[280px]">{rule.display_name || rule.name}</span>
                         </div>
+                        <span className="text-[10px] text-slate-500 truncate block max-w-[320px]">{rule.name}</span>
                       </td>
 
-                      <td className="p-md">
-                        <span
-                          className={`px-xs py-[2px] rounded text-[10px] font-bold border uppercase ${
-                            action === "ALLOW"
-                              ? "bg-secondary/10 text-secondary border-secondary/20"
-                              : action === "BLOCK"
-                                ? "bg-error/10 text-error border-error/20"
-                                : "bg-surface-container-high text-outline border-outline-variant"
-                          }`}
-                        >
-                          {action}
+                      <td className="py-2.5 px-3">
+                        <span className="flex items-center gap-1 text-[11px]">
+                          {(rule.direction || '').toLowerCase() === 'outbound' ? (
+                            <><ArrowUpRight className="w-3.5 h-3.5 text-blue-400" /> Outbound</>
+                          ) : (
+                            <><ArrowDownLeft className="w-3.5 h-3.5 text-emerald-400" /> Inbound</>
+                          )}
                         </span>
                       </td>
 
-                      <td className="p-md text-primary uppercase">
-                        {rule.direction}
+                      <td className="py-2.5 px-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          isBlock ? 'bg-red-950/80 text-red-400 border border-red-800' : 'bg-emerald-950/80 text-emerald-400 border border-emerald-800'
+                        }`}>
+                          {rule.action || 'ALLOW'}
+                        </span>
                       </td>
 
-                      <td className="p-md text-on-surface-variant uppercase">
-                        {rule.profile}
+                      <td className="py-2.5 px-3 text-slate-300">
+                        {rule.remote_address || 'Any'}
                       </td>
 
-                      <td className="p-md text-right">
-                        <span
-                          className={`inline-flex items-center gap-xs px-sm py-[2px] rounded text-[10px] font-bold border ${
-                            rule.enabled
-                              ? "bg-secondary/10 text-secondary border-secondary/20"
-                              : "bg-error/10 text-error border-error/20"
-                          }`}
-                        >
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              rule.enabled
-                                ? "bg-secondary"
-                                : "bg-error"
-                            }`}
-                          />
+                      <td className="py-2.5 px-3 text-slate-300">
+                        {rule.remote_port || 'Any'}
+                      </td>
 
-                          {rule.enabled ? "ENABLED" : "DISABLED"}
+                      <td className="py-2.5 px-3 text-right">
+                        <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold text-[11px]">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Active
                         </span>
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

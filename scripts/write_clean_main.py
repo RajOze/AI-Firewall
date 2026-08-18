@@ -1,4 +1,6 @@
-"""Sentinel AI Firewall Backend Application Entrypoint."""
+﻿from pathlib import Path
+
+main_code = """\"\"\"Sentinel AI Firewall Backend Application Entrypoint.\"\"\"
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
@@ -18,7 +20,7 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage application background workers lifecycle."""
+    \"\"\"Manage application background workers lifecycle.\"\"\"
     is_testing = os.getenv("PYTEST_CURRENT_TEST") is not None
     telemetry_service = get_telemetry_service()
     if not is_testing:
@@ -67,3 +69,7 @@ def read_root():
 @app.get("/health")
 def read_health():
     return {"status": "healthy"}
+"""
+
+Path("backend/app/main.py").write_text(main_code, encoding="utf-8")
+print("Successfully verified backend/app/main.py")
