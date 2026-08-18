@@ -1,192 +1,117 @@
-import { useState } from "react";
-import { analyzePrompt } from "../services/api";
-import type { AnalyzeResponse } from "../services/api";
+import { useState } from 'react';
+import { analyzePrompt } from '../services/api';
+import type { AnalyzeResponse } from '../services/api';
+import { Bot, Send, ShieldAlert, CheckCircle, Loader2 } from 'lucide-react';
 
-interface TerminalMessage {
-  id: string;
-  type: "user" | "ai" | "system";
+interface Message {
+  sender: 'user' | 'assistant';
   text: string;
-  timestamp: string;
   analysis?: AnalyzeResponse;
 }
 
 export default function AIAssistantPage() {
-  const [inputText, setInputText] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [messages, setMessages] = useState<TerminalMessage[]>([
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([
     {
-      id: "msg-1",
-      type: "system",
-      text: "Sentinel AI Neural Engine initialized. Deep Packet Inspection & Prompt Analysis online.",
-      timestamp: "13:00:00",
-    },
-    {
-      id: "msg-2",
-      type: "ai",
-      text: "Hello, Administrator. Submit any prompt, command payload, or log string below for real-time security score and threat category classification.",
-      timestamp: "13:00:01",
+      sender: 'assistant',
+      text: 'Hello! I am Sentinel AI Assistant. Enter any network payload, suspicious command, or log line to evaluate threat risk.',
     },
   ]);
 
-  const handleAnalyze = async (textToAnalyze?: string) => {
-    const prompt = textToAnalyze || inputText;
-    if (!prompt.trim() || loading) return;
-
-    const userMsg: TerminalMessage = {
-      id: `user-${Date.now()}`,
-      type: "user",
-      text: prompt,
-      timestamp: new Date().toLocaleTimeString(),
-    };
-
-    setMessages((prev: TerminalMessage[]) => [...prev, userMsg]);
-    if (!textToAnalyze) setInputText("");
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    const textToSend = input;
+    setInput('');
+    setMessages((prev) => [...prev, { sender: 'user', text: textToSend }]);
     setLoading(true);
 
     try {
-      const response = await analyzePrompt(prompt);
-
-      const aiMsg: TerminalMessage = {
-        id: `ai-${Date.now()}`,
-        type: "ai",
-        text: `Analysis complete. Result: ${response.safe ? "SAFE" : "POTENTIAL THREAT"} (Score: ${response.score.toFixed(2)})`,
-        timestamp: new Date().toLocaleTimeString(),
-        analysis: response,
-      };
-
-      setMessages((prev: TerminalMessage[]) => [...prev, aiMsg]);
+      const response = await analyzePrompt(textToSend);
+      const isSafe = response.safe ?? (response.decision !== 'BLOCK');
+      const score = response.score ?? response.confidence ?? 0.0;
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'assistant',
+          text: `Analysis complete. Result: ${isSafe ? 'SAFE' : 'POTENTIAL THREAT'} (Score: ${score.toFixed(2)})`,
+          analysis: response,
+        },
+      ]);
     } catch (err: any) {
-      const errorMsg: TerminalMessage = {
-        id: `sys-${Date.now()}`,
-        type: "system",
-        text: `Error contacting AI Backend: ${err.message || "Failed to analyze prompt"}`,
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      setMessages((prev: TerminalMessage[]) => [...prev, errorMsg]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'assistant',
+          text: `Analysis failed: ${err.message || 'Unknown error occurred'}`,
+        },
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
-
   return (
-    <div className="flex flex-col w-full gap-gutter h-[calc(100vh-100px)]">
-      {/* Header Banner */}
-      <div className="bg-surface-container p-lg rounded border border-outline-variant/30 flex items-center justify-between flex-shrink-0">
-        <div>
-          <h1 className="font-headline-lg text-on-surface flex items-center gap-2">
-            <span className="material-symbols-outlined text-secondary text-[28px]">smart_toy</span>
-            AI Assistant Terminal
-          </h1>
-          <p className="font-body-sm text-outline mt-1">
-            Real-time payload inspection, prompt injection detection, and AI threat analysis.
-          </p>
-        </div>
-        <div className="flex items-center gap-xs px-md py-xs bg-secondary-container/10 border border-secondary/20 rounded-full text-secondary font-label-caps">
-          <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
-          FASTAPI MODEL BACKEND
+    <div className="flex flex-col w-full h-[calc(100vh-2rem)] gap-4 p-6 text-slate-100 font-mono">
+      <div className="bg-[#111625] p-4 rounded-xl border border-slate-800 flex items-center justify-between shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+            <Bot className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-white">Sentinel AI Copilot</h1>
+            <p className="text-xs text-slate-400">Interactive threat triage & security reasoning assistant</p>
+          </div>
         </div>
       </div>
 
-      {/* Preset Prompt Shortcuts */}
-      <div className="flex items-center gap-sm flex-shrink-0">
-        <span className="font-label-caps text-outline">Quick Presets:</span>
-        <button
-          onClick={() => handleAnalyze("SELECT * FROM users WHERE admin = 1 OR '1'='1'")}
-          className="px-md py-xs bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant text-[12px] font-code-sm rounded border border-outline-variant/30 transition-colors"
-        >
-          SQL Injection Payload
-        </button>
-        <button
-          onClick={() => handleAnalyze("powershell -ExecutionPolicy Bypass -NoProfile -Enc QmFzaDY0...")}
-          className="px-md py-xs bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant text-[12px] font-code-sm rounded border border-outline-variant/30 transition-colors"
-        >
-          Encoded PowerShell
-        </button>
-        <button
-          onClick={() => handleAnalyze("GET /index.html HTTP/1.1 User-Agent: Mozilla/5.0")}
-          className="px-md py-xs bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant text-[12px] font-code-sm rounded border border-outline-variant/30 transition-colors"
-        >
-          Standard HTTP Request
-        </button>
-      </div>
-
-      {/* Terminal View Container */}
-      <div className="flex-1 bg-surface-container-lowest border border-outline-variant/40 rounded p-lg overflow-y-auto flex flex-col gap-md font-code-sm text-[13px]">
-        {messages.map((msg) => (
-          <div key={msg.id} className="flex flex-col gap-xs">
-            <div className="flex items-center gap-md text-[11px] text-outline">
-              <span className="uppercase font-bold tracking-wider">
-                [{msg.type === "user" ? "ADMIN" : msg.type === "ai" ? "SENTINEL-AI" : "SYSTEM"}]
-              </span>
-              <span>{msg.timestamp}</span>
-            </div>
-
+      <div className="flex-1 bg-[#111625] rounded-xl border border-slate-800 p-4 overflow-y-auto space-y-4">
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+          >
             <div
-              className={`p-md rounded ${
-                msg.type === "user"
-                  ? "bg-surface-container text-on-surface border border-outline-variant/30"
-                  : msg.type === "ai"
-                  ? "bg-surface-container-low text-on-surface border border-primary/30"
-                  : "bg-surface-container-highest/20 text-outline border border-outline-variant/10"
+              className={`max-w-xl p-3.5 rounded-xl text-xs ${
+                msg.sender === 'user'
+                  ? 'bg-blue-600 text-white rounded-br-none'
+                  : 'bg-[#161c2e] border border-slate-800 text-slate-200 rounded-bl-none'
               }`}
             >
-              <p className="whitespace-pre-wrap">{msg.text}</p>
-
+              <p>{msg.text}</p>
               {msg.analysis && (
-                <div className="mt-md pt-md border-t border-outline-variant/30 grid grid-cols-1 md:grid-cols-3 gap-md">
-                  <div className="flex flex-col">
-                    <span className="font-label-caps text-outline">Safety Verdict</span>
-                    <span
-                      className={`font-headline-sm text-[16px] font-bold ${
-                        msg.analysis.safe ? "text-secondary" : "text-error"
-                      }`}
-                    >
-                      {msg.analysis.safe ? "✓ SAFE" : "⚠ THREAT DETECTED"}
-                    </span>
+                <div className="mt-2.5 pt-2.5 border-t border-slate-700/60 text-[11px] space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    {msg.analysis.safe ? (
+                      <span className="text-emerald-400 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" /> ✓ SAFE</span>
+                    ) : (
+                      <span className="text-red-400 flex items-center gap-1"><ShieldAlert className="w-3.5 h-3.5" /> ⚠ THREAT DETECTED</span>
+                    )}
                   </div>
-                  <div className="flex flex-col">
-                    <span className="font-label-caps text-outline">Threat Score</span>
-                    <span className="font-headline-sm text-[16px] text-primary">
-                      {msg.analysis.score.toFixed(3)}
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-label-caps text-outline">Category / Reason</span>
-                    <span className="font-body-sm text-on-surface-variant truncate">
-                      {msg.analysis.category || msg.analysis.reason || "General Payload"}
-                    </span>
-                  </div>
+                  <p className="text-slate-400">Decision: <span className="text-slate-200">{msg.analysis.decision}</span></p>
+                  <p className="text-slate-400">Reason: <span className="text-slate-300">{msg.analysis.reason}</span></p>
                 </div>
               )}
             </div>
           </div>
         ))}
-
-        {loading && (
-          <div className="flex items-center gap-md text-secondary animate-pulse p-sm">
-            <span className="material-symbols-outlined">hourglass_empty</span>
-            <span>Sentinel AI is analyzing payload...</span>
-          </div>
-        )}
       </div>
 
-      {/* Input Bar */}
-      <div className="flex items-center gap-md flex-shrink-0">
+      <div className="bg-[#111625] p-3 rounded-xl border border-slate-800 flex items-center gap-3">
         <input
           type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
-          placeholder="Type or paste payload string for AI security analysis..."
-          className="flex-1 bg-surface-container-low border border-outline-variant rounded px-lg py-md text-body-md font-code-sm text-on-surface focus:outline-none focus:border-primary transition-colors"
+          placeholder="Type a PowerShell command, suspicious IP, or payload to analyze..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          className="flex-1 bg-[#161c2e] border border-slate-700 rounded-lg px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-blue-500"
         />
         <button
-          onClick={() => handleAnalyze()}
-          disabled={loading || !inputText.trim()}
-          className="px-xl py-md bg-primary text-on-primary font-headline-sm text-[14px] rounded hover:bg-primary-container transition-colors disabled:opacity-50 flex items-center gap-xs"
+          onClick={handleSend}
+          disabled={loading || !input.trim()}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
         >
-          <span className="material-symbols-outlined text-[18px]">send</span>
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           Analyze
         </button>
       </div>
