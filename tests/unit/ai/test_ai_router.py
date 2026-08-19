@@ -7,6 +7,7 @@ import httpx
 
 from backend.ai.providers.base import ProviderStatus
 from backend.ai.providers.gemini_provider import GeminiFlashProvider
+from backend.ai.providers.gemma_provider import GemmaLocalProvider
 from backend.ai.providers.local_fallback import LocalFallbackProvider
 from backend.ai.router import AIRouter
 from backend.ai.schemas import (
@@ -157,7 +158,8 @@ async def test_ai_router_automatic_fallback_on_gemini_timeout():
 
     gemini_mock.generate_advisory.side_effect = _hang
 
-    router = AIRouter(primary_provider=gemini_mock, default_timeout_sec=0.1)
+    # Use a list of providers: gemini_mock (will timeout) and a real LocalFallbackProvider as fallback
+    router = AIRouter(providers=[gemini_mock, LocalFallbackProvider()], default_timeout_sec=0.1)
 
     context = {
         "process_name": "test_app.exe",

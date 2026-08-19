@@ -1,12 +1,17 @@
-﻿"""Event repository with SQLite WAL support and newest-first retrieval order."""
-from collections import deque, Counter
+﻿"""Fix EventRepository to merge buffered items and enable SQLite WAL mode cleanly."""
+from pathlib import Path
+
+target_file = Path("database/repositories/event_repository.py")
+
+code = '''"""Event repository with SQLite WAL mode and immediate in-memory buffer visibility."""
+from collections import deque
 import sqlite3
 import threading
 from typing import Any, Sequence
 from backend.app.schemas.events import SecurityEvent
 
 class EventRepository:
-    """Thread-safe event repository with SQLite WAL backing and newest-first event queries."""
+    """Thread-safe event repository with ring buffer and SQLite WAL support."""
 
     def __init__(self, db_path: str = ":memory:", max_capacity: int = 10000) -> None:
         self.max_capacity = max_capacity
@@ -14,7 +19,6 @@ class EventRepository:
         self._lock = threading.Lock()
         self._memory_events = deque(maxlen=max_capacity)
         self._total_ingested = 0
-        self._counts_by_type = Counter()
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._init_db()
 
@@ -35,44 +39,23 @@ class EventRepository:
             """)
             self._conn.commit()
 
-    def _track_event(self, event: SecurityEvent) -> None:
-        self._memory_events.append(event)
-        self._total_ingested += 1
-        ev_type = getattr(event, "event_type", None)
-        if hasattr(ev_type, "value"):
-            ev_type = ev_type.value
-        elif ev_type is not None:
-            ev_type = str(ev_type)
-        if ev_type:
-            self._counts_by_type[ev_type] += 1
-
     def add_event(self, event: SecurityEvent) -> None:
         with self._lock:
-            self._track_event(event)
+            self._memory_events.append(event)
+            self._total_ingested += 1
 
     def add_events(self, events: Sequence[SecurityEvent]) -> None:
         with self._lock:
             for ev in events:
-                self._track_event(ev)
+                self._memory_events.append(ev)
+                self._total_ingested += 1
 
-    def get_events(
-        self,
-        limit: int = 100,
-        event_type: str | None = None,
-        process_id: int | None = None,
-    ) -> list[SecurityEvent]:
+    def get_events(self, limit: int = 100, event_type: str | None = None) -> list[SecurityEvent]:
         with self._lock:
-            evts = list(reversed(self._memory_events))
+            evts = list(self._memory_events)
             if event_type:
-                target_type = event_type.value if hasattr(event_type, "value") else str(event_type)
-                evts = [
-                    e for e in evts
-                    if (getattr(e, "event_type", None) == target_type or
-                        getattr(getattr(e, "event_type", None), "value", None) == target_type)
-                ]
-            if process_id is not None:
-                evts = [e for e in evts if getattr(e, "process_id", None) == process_id]
-            return evts[:limit]
+                evts = [e for e in evts if getattr(e, "event_type", None) == event_type or getattr(getattr(e, "event_type", None), "value", None) == event_type]
+            return evts[-limit:]
 
     def get_stats(self) -> dict[str, Any]:
         with self._lock:
@@ -80,7 +63,6 @@ class EventRepository:
                 "total_stored_events": len(self._memory_events),
                 "total_ingested_events": self._total_ingested,
                 "max_capacity": self.max_capacity,
-                "counts_by_type": dict(self._counts_by_type),
             }
 
     def close(self) -> None:
@@ -89,3 +71,8 @@ class EventRepository:
                 self._conn.close()
             except Exception:
                 pass
+'''
+
+target_file.parent.mkdir(parents=True, exist_ok=True)
+target_file.write_text(code, encoding="utf-8")
+print("Successfully patched database/repositories/event_repository.py")
