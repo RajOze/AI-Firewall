@@ -1,5 +1,6 @@
 """Gemma Local Provider for on-device quantized threat reasoning."""
 import json
+import asyncio
 import os
 import time
 from typing import Any
@@ -41,16 +42,14 @@ class GemmaLocalProvider(BaseAIProvider):
         self.n_ctx = n_ctx
         self.n_batch = n_batch
         self.timeout_sec = timeout_sec
-        self._model: Llama | None = None
-        self._load_model()
 
-    def _load_model(self) -> None:
-        """Load the quantized Gemma model."""
+    def _load_model(self):
+        """Load the quantized Gemma model and return the instance or None if failed."""
         if not LLAMA_CPP_AVAILABLE:
             logger.error("Cannot load Gemma model: llama-cpp-python not installed.")
-            return
+            return None
         try:
-            self._model = Llama(
+            model = Llama(
                 model_path=self.model_path,
                 n_ctx=self.n_ctx,
                 n_batch=self.n_batch,
@@ -59,26 +58,34 @@ class GemmaLocalProvider(BaseAIProvider):
                 verbose=False,
             )
             logger.info(f"Gemma model loaded from {self.model_path}")
+            return model
         except Exception as e:
             logger.error(f"Failed to load Gemma model: {e}")
-            self._model = None
+            return None
 
     @property
     def provider_name(self) -> str:
         return "gemma-local:quantized-v1"
 
     async def health_check(self) -> ProviderHealth:
-        if not LLAMA_CPP_AVAILABLE or self._model is None:
+        if not LLAMA_CPP_AVAILABLE:
             return ProviderHealth(
                 provider_name=self.provider_name,
                 status=ProviderStatus.OFFLINE,
                 message="Gemma model not available or failed to load",
             )
         # Simple health check: generate a trivial completion to see if the model responds
+        model = self._load_model()
+        if model is None:
+            return ProviderHealth(
+                provider_name=self.provider_name,
+                status=ProviderStatus.OFFLINE,
+                message="Gemma model not available or failed to load",
+            )
         start = time.perf_counter()
         try:
             # We'll use a simple prompt to test the model
-            response = self._model.create_completion(
+            response = model.create_completion(
                 prompt="Health check: respond with 'OK'",
                 max_tokens=5,
                 temperature=0.0,
@@ -99,6 +106,14 @@ class GemmaLocalProvider(BaseAIProvider):
                     latency_ms=round(elapsed_ms, 2),
                     message="Unexpected response from model",
                 )
+        except asyncio.TimeoutError:
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            return ProviderHealth(
+                provider_name=self.provider_name,
+                status=ProviderStatus.OFFLINE,
+                latency_ms=round(elapsed_ms, 2),
+                message="Health check timed out",
+            )
         except Exception as exc:
             elapsed_ms = (time.perf_counter() - start) * 1000
             return ProviderHealth(
@@ -107,10 +122,18 @@ class GemmaLocalProvider(BaseAIProvider):
                 latency_ms=round(elapsed_ms, 2),
                 message=str(exc),
             )
+        finally:
+            # Unload the model to maintain ~0 MB idle footprint
+            # We don't explicitly delete the model; we rely on garbage collection
+            # by not keeping a reference to it after this method.
+            pass
 
     async def generate_advisory(self, context: dict[str, Any]) -> ThreatAdvisory:
-        if self._model is None:
-            raise RuntimeError("Gemma model is not loaded.")
+        if not LLAMA_CPP_AVAILABLE:
+            raise RuntimeError("Gemma model is not available.")
+        model = self._load_model()
+        if model is None:
+            raise RuntimeError("Failed to load Gemma model.")
 
         start = time.perf_counter()
         # Build the full prompt including system instruction and user context
@@ -119,7 +142,7 @@ class GemmaLocalProvider(BaseAIProvider):
 
         # Generate the advisory using the model
         try:
-            response = self._model.create_completion(
+            response = model.create_completion(
                 prompt=full_prompt,
                 response_format={"type": "json_object"},  # Enforce JSON output
                 temperature=0.1,
@@ -163,3 +186,8 @@ class GemmaLocalProvider(BaseAIProvider):
         except Exception as exc:
             logger.error(f"Error generating advisory with Gemma model: {exc}")
             raise
+        finally:
+            # Unload the model to maintain ~0 MB idle footprint
+            # We don't explicitly delete the model; we rely on garbage collection
+            # by not keeping a reference to it after this method.
+            pass

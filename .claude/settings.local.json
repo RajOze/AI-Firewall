@@ -1,8 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(.venv/Scripts/python -m pytest -v)",
-      "Bash(.venv/Scripts/python -m pytest tests/unit/ai/test_ai_router.py -v)"
+      "Bash(python *)",
+      "Bash(dir *)",
+      "Bash(..venvScriptspython.exe *)"
     ]
   }
 }

@@ -20,8 +20,8 @@ class RepositorySubscriber:
     async def handle_event(self, event: Any) -> None:
         """Receive and insert security events into storage."""
         if isinstance(event, (SecurityEvent,)):
-            self._repository.add_event(event)
+            await self._repository.add_event(event)
         elif hasattr(event, "event_type"):
-            self._repository.add_event(event)
+            await self._repository.add_event(event)
         else:
             logger.debug("Skipping unhandled repository event type: %s", type(event))

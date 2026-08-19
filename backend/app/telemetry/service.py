@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from typing import Any
 
 from app.events.dispatcher import EventDispatcher
@@ -37,6 +38,11 @@ class TelemetryService:
         self.poll_interval_seconds = poll_interval_seconds
         self._is_running = False
         self._task: asyncio.Task | None = None
+        self._lock = threading.Lock()
+        # Mirror the repository's in-memory storage for direct access
+        self._memory_events = self.repository._memory_events
+        self._total_ingested = self.repository._total_ingested
+        self._counts_by_type = self.repository._counts_by_type
 
     def poll_once(self) -> list[SecurityEvent]:
         """Perform a single non-blocking telemetry collection pass."""
@@ -61,7 +67,11 @@ class TelemetryService:
                     self.dispatcher.publish_nowait(evt)
             else:
                 # Direct fallback when dispatcher is not supplied
-                self.repository.add_events(collected_events)
+                # Note: We're calling async method from sync context - we need to handle this
+                # For now, we'll store in memory only and let the batch buffer handle persistence
+                with self._lock:
+                    for ev in collected_events:
+                        self._track_event(ev)
                 for evt in collected_events:
                     if isinstance(evt, NetworkConnectionEvent):
                         proc_info = ProcessInfo(
@@ -85,6 +95,18 @@ class TelemetryService:
                             logger.debug("Error during Phase 2 evaluation of event: %s", exc)
 
         return collected_events
+
+    def _track_event(self, event: SecurityEvent) -> None:
+        """Track event in memory and update counts (thread-safe)."""
+        self._memory_events.append(event)
+        self._total_ingested += 1
+        ev_type = getattr(event, "event_type", None)
+        if hasattr(ev_type, "value"):
+            ev_type = ev_type.value
+        elif ev_type is not None:
+            ev_type = str(ev_type)
+        if ev_type:
+            self._counts_by_type[ev_type] = self._counts_by_type.get(ev_type, 0) + 1
 
     async def start(self) -> None:
         """Start background telemetry polling loop and dispatcher worker."""
